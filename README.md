@@ -89,11 +89,12 @@ The workflow writes only the confirmed fixture-scoped data:
 | Destination | Purpose |
 | --- | --- |
 | `public.fixture_match_stats` | Canonical match and team analytics plus the ordered goal, assist, yellow-card, and red-card timeline |
+| `public.fixture_events` | Public fixture-page projection of goals, assists, yellow cards, and red cards |
 | `public.fixtures.home_score` | Confirmed official home score |
 | `public.fixtures.away_score` | Confirmed official away score |
 | `public.fixture_player_match_stats` | Confirmed athlete-linked player statistics, when available |
 
-It does not use analytics events to infer athlete identity, and it does not modify teams, athletes, lineups, or unrelated fixture fields. Existing `fixture_events` are treated as separate scoresheet data and are not considered proof that a fixture is finalized.
+It does not use analytics events to infer athlete identity, and it does not modify teams, athletes, lineups, or unrelated fixture fields. Existing `fixture_events` are preserved; verified Veo key events are added idempotently for the public timeline, and event rows alone are not considered proof that a fixture is finalized.
 
 ## Repository layout
 

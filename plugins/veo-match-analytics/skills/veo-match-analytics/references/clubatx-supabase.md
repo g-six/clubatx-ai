@@ -10,7 +10,7 @@ Use this reference only after Veo extraction is complete and persistence is requ
 - `public.fixtures.video_url` stores the full user-supplied Veo match URL after replacing the first `#/analysis/` route prefix with `#/`. Preserve every other character. If that route prefix is absent, store the supplied URL unchanged.
 - ClubATX has no independent fixture-status column in this workflow. Downstream consumers treat both official score columns being non-null as the completion signal. A 0 is a recorded score; `null` means the fixture is still unfinalized.
 - `public.fixture_match_stats` is one row per fixture. Saving the same fixture again intentionally replaces its complete payload.
-- Veo goals, assists, yellow cards, and red cards belong in the payload's ordered `key_events` array so the public fixture page can render the imported timeline. Do not insert them into `public.fixture_events`; that table represents manually curated result events and has a separate provenance and event model.
+- Preserve Veo goals, assists, yellow cards, and red cards in the payload's ordered `key_events` array for source auditability. Also save their public projection in `public.fixture_events`, which is the table the public fixture page reads for its Key Events timeline.
 - If `fixture_match_stats` does not exist, stop and tell the user that the repository migration `supabase/migrations/20260921190951_fixture_match_stats.sql` must be applied. Do not create or alter schema during an import run.
 
 ## Resolve the fixture
@@ -39,7 +39,7 @@ Require exactly one row and non-null home and away team names. Use those names, 
 
 ## Audit completion and repair partial imports
 
-For every persistence run—including a retry, event refresh, or athlete-link correction—read both the fixture row and any existing `fixture_match_stats` row before preparing changes.
+For every persistence run—including a retry, event refresh, or athlete-link correction—read the fixture row, any existing `fixture_match_stats` row, and existing `fixture_events` before preparing changes.
 
 - Do not infer completion from the presence of analytics, player statistics, or `fixture_events`.
 - If both official score columns are non-null, compare them with the confirmed final score and preserve them unless the user explicitly confirms a replacement.
@@ -76,6 +76,28 @@ Run this workflow after the user confirms the home/away mapping and before build
 Every retry starts from fresh database state. If the user says fixture jersey numbers or athlete links were added, changed, or should be tried again, re-query both fixture sides and rebuild the complete mapping preview. Do not merge stale candidate rows into the refreshed result. Any revised mapping invalidates an earlier write confirmation.
 
 Normalize whitespace and compare names case-insensitively, but escape user-provided text safely before using it in SQL. Prefer an exact normalized full-name match first. If broader partial matching is needed, show the resulting candidates and require an explicit selection.
+
+## Project key events into `fixture_events`
+
+The public fixture page reads `public.fixture_events`; saving key events only inside the analytics JSON does not make the timeline visible. Project each active Veo `key_events` record as follows:
+
+| Source | `fixture_events` destination |
+| --- | --- |
+| confirmed canonical team | confirmed home or away `division_team_id` |
+| confirmed athlete | `athlete_slug`; otherwise `null` |
+| confirmed or source-provided player name | `recipient_name` |
+| jersey with no trustworthy name | `recipient_name` as `#<jersey_number>` |
+| `goal` | `event_type = 'goal'` |
+| `assist` | `event_type = 'assist'` |
+| `yellow_card` | `event_type = 'yellow'` |
+| `red_card` | `event_type = 'red'` |
+| source clock | `minute` and `added_time` |
+
+Set `recipient_role` to `player` and `video_url` to `null`; the fixture-level Veo URL is not an event-specific clip URL. A jersey label is an honest source identifier, not an athlete link. If a key event has neither a trustworthy player name nor jersey number, stop before saving rather than inventing a recipient. Exclude events explicitly marked deleted, overturned, or invalid from `fixture_events`, while retaining their status in the JSON audit payload.
+
+Never save passes, shots, tackles, interceptions, dribbles, possession records, or other non-key analytics in `fixture_events`.
+
+Before inserting, read existing rows and match duplicate occurrences one-for-one on `(division_team_id, event_type, minute, added_time, athlete_slug-or-normalized-recipient)`. Preserve every existing row. Insert only unmatched Veo key events, so retries are idempotent and manually curated rows are not deleted. If a later correction must replace or remove an existing row, preview that destructive change separately and obtain explicit confirmation.
 
 ## Canonical payload
 
@@ -200,11 +222,11 @@ Validate before saving:
 
 The rendered team metrics and event feed are separate source scopes. `teams.*.events.shots` and `total_attempts` come from the rendered team table or verified equivalent export; they are not recomputed from `key_events`. An event-feed count may legitimately differ. Preserve both, show the exact discrepancy in the preview, and do not change records or team metrics solely to force equality.
 
-When refreshing events on an existing row, preserve its validated `match` and `teams` objects and replace the whole `key_events` timeline. Never append without reading the saved row first. The public fixture page reads this array from `fixture_match_stats.payload`; verify the saved array's order, types, period, clock, team, and athlete fields after writing.
+When refreshing events on an existing analytics row, preserve its validated `match` and `teams` objects and replace the whole `key_events` source timeline. Never append to the JSON array without reading the saved row first. Separately insert only the missing public projection rows into `fixture_events`.
 
 ## Save and verify
 
-After the user confirms the final preview, use the Supabase SQL connector to perform one atomic statement that upserts the analytics payload and updates only the official home and away score columns:
+After the user confirms the final preview, use the Supabase SQL connector to perform one atomic statement that upserts the analytics payload, inserts missing public key events, and updates only the official home and away score columns. Add an `input_events` CTE for the fully validated projection and an `inserted_events` CTE that uses `not exists` with the duplicate identity above. Make the final result return the inserted event count alongside the fixture and stats rows.
 
 ```sql
 with saved_stats as (
@@ -239,10 +261,10 @@ from saved_stats
 join saved_fixture on saved_fixture.id = saved_stats.fixture_id;
 ```
 
-Before executing, confirm that each chosen dollar-quote delimiter does not occur in the value it encloses. Execute exactly one mutating statement. When linked player statistics are also confirmed, extend this statement with an input-values CTE and a `saved_player_stats` upsert CTE following [clubatx-player-stats.md](clubatx-player-stats.md), and return its saved-row count alongside the fixture result. Do not issue a separate player write that could leave only half of a confirmed combined import committed.
+Before executing, confirm that each chosen dollar-quote delimiter does not occur in the value it encloses. Execute exactly one mutating statement. Do not call `save_fixture_scoresheet`, because that function derives the official score from event rows. When linked player statistics are also confirmed, extend this statement with an input-values CTE and a `saved_player_stats` upsert CTE following [clubatx-player-stats.md](clubatx-player-stats.md), and return its saved-row count alongside the fixture result. Do not issue a separate event or player write that could leave only half of a confirmed combined import committed.
 
 If the SQL connector or another transaction-capable database operation is unavailable, do not approximate this with separate analytics and fixture REST mutations. Stop before writing so the workflow cannot leave another analytics-present/score-null partial import.
 
-Require the statement to return exactly one joined fixture row; zero rows means the fixture update failed and must not be reported as success. Then run separate filtered `select` queries by the same fixture ID and compare the returned JSON, official scores, exact `video_url`, and any player rows with the complete intended import. Require both score values to be non-null (while accepting numeric zero) and exactly equal to the confirmed final score. Require `video_url` to exactly equal the derived full Veo URL. If the analytics payload exists but either official score is null or mismatched, call the result an incomplete import and do not say the fixture is final, complete, or successfully imported. Report a `video_url` mismatch as failed verification rather than claiming the import succeeded.
+Require the statement to return exactly one joined fixture row; zero rows means the fixture update failed and must not be reported as success. Then run separate filtered `select` queries by the same fixture ID and compare the returned JSON, all goal/assist/yellow/red `fixture_events`, official scores, exact `video_url`, and any player rows with the complete intended import. Require both score values to be non-null (while accepting numeric zero) and exactly equal to the confirmed final score. Require `video_url` to exactly equal the derived full Veo URL. If the analytics payload exists but either official score is null or mismatched, call the result an incomplete import and do not say the fixture is final, complete, or successfully imported. Report a public-timeline or `video_url` mismatch as failed verification rather than claiming the import succeeded.
 
-Never log, print, or request Supabase secrets. Never broaden the write beyond the confirmed analytics row, the two official-score columns and `video_url` on the confirmed fixture row, and any explicitly previewed and confirmed player-stat or exact playing-time rows.
+Never log, print, or request Supabase secrets. Never broaden the write beyond the confirmed analytics row, missing key-event rows, the two official-score columns and `video_url` on the confirmed fixture row, and any explicitly previewed and confirmed player-stat or exact playing-time rows.
