@@ -1,0 +1,121 @@
+# ClubATX AI
+
+Codex plugins and reusable agent workflows for ClubATX operations.
+
+This repository is a Codex marketplace. It currently distributes the `veo-match-analytics` plugin, which imports confirmed Veo match analytics into the ClubATX Supabase project while preserving explicit human approval for fixture identity, team mapping, the official score, and athlete links.
+
+## Included plugin
+
+### Veo Match Analytics
+
+`veo-match-analytics` can:
+
+- open an `https://app.veo.co/...` match in the user's existing browser session;
+- extract rendered match, team, player, and event analytics;
+- map Veo teams to the canonical ClubATX fixture teams;
+- resolve jersey-bearing analytics against the current fixture lineup;
+- preview every proposed database mutation and request confirmation;
+- atomically save the analytics payload, official score, and confirmed player statistics; and
+- read the saved rows back and verify the complete import.
+
+The workflow explicitly detects partial imports. Saved analytics or imported events do not finalize a ClubATX fixture: both `fixtures.home_score` and `fixtures.away_score` must be non-null and match the confirmed result. A numeric zero is a valid recorded score.
+
+## Requirements
+
+- Codex CLI or the Codex experience in the ChatGPT desktop app with plugin support.
+- Access to the target Veo match. Sign-in happens in the user's browser; credentials must never be pasted into chat.
+- A configured Supabase connection for the ClubATX project with the permissions required by the requested import.
+- A transaction-capable SQL operation for persistence. The plugin will stop instead of splitting a complete import into independent analytics and score writes.
+
+## Install
+
+Add this GitHub repository as a marketplace:
+
+```sh
+codex plugin marketplace add g-six/clubatx-ai --ref main
+```
+
+Install the plugin:
+
+```sh
+codex plugin add veo-match-analytics@clubatx-ai
+```
+
+Then start a new Codex task so the installed skill is loaded. In the ChatGPT desktop app, you can also open the Plugins Directory, select the **ClubATX AI** marketplace, and install **Veo Match Analytics**.
+
+To receive repository updates later:
+
+```sh
+codex plugin marketplace upgrade clubatx-ai
+codex plugin add veo-match-analytics@clubatx-ai
+```
+
+## Use
+
+Provide the exact Veo match URL and the ClubATX fixture ID when known. For example:
+
+> Import the completed analytics from `https://app.veo.co/...#/analysis/` into ClubATX fixture 74.
+
+Before any write, the workflow will present and require confirmation of:
+
+1. the ClubATX fixture;
+2. the Veo-to-database home and away team assignments;
+3. the current and proposed official score;
+4. athlete mappings for every relevant team and jersey number; and
+5. the exact tables and rows that will be changed.
+
+The plugin does not ask for or expose database keys, passwords, browser cookies, or Veo credentials.
+
+## Persistence model
+
+The workflow writes only the confirmed fixture-scoped data:
+
+| Destination | Purpose |
+| --- | --- |
+| `public.fixture_match_stats` | Canonical match, team, and event analytics payload |
+| `public.fixtures.home_score` | Confirmed official home score |
+| `public.fixtures.away_score` | Confirmed official away score |
+| `public.fixture_player_match_stats` | Confirmed athlete-linked player statistics, when available |
+
+It does not use analytics events to infer athlete identity, and it does not modify teams, athletes, lineups, or unrelated fixture fields. Existing `fixture_events` are treated as separate scoresheet data and are not considered proof that a fixture is finalized.
+
+## Repository layout
+
+```text
+.
+├── .agents/plugins/marketplace.json
+└── plugins/
+    └── veo-match-analytics/
+        ├── .codex-plugin/plugin.json
+        └── skills/veo-match-analytics/
+            ├── SKILL.md
+            ├── agents/openai.yaml
+            └── references/
+```
+
+The marketplace manifest is in `.agents/plugins/marketplace.json`; plugin source is kept under `plugins/`.
+
+## Development
+
+After changing the skill or its references, validate both the skill and plugin from the repository root:
+
+```sh
+python3 ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py \
+  plugins/veo-match-analytics/skills/veo-match-analytics
+
+python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py \
+  plugins/veo-match-analytics
+```
+
+Before distributing an updated local build, refresh its cache-buster rather than incrementing the semantic version solely to force reinstallation:
+
+```sh
+python3 ~/.codex/skills/.system/plugin-creator/scripts/update_plugin_cachebuster.py \
+  plugins/veo-match-analytics
+```
+
+Validate again, commit the source change and generated version change together, then refresh and reinstall the marketplace plugin in a new Codex task.
+
+## Documentation
+
+See the [official OpenAI plugin packaging documentation](https://developers.openai.com/plugins/build/plugins) for marketplace, installation, and plugin-structure details.
