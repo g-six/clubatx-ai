@@ -5,7 +5,7 @@ description: Access Veo match analysis pages, extract rendered team, player, and
 
 # Veo Match Analytics
 
-Use the Browser plugin to operate Veo in the user's existing browser session. Treat the supplied Veo URL as the authoritative match target. Do not inspect browser cookies, local storage, passwords, profiles, or session files.
+Use the Browser plugin to operate Veo in the user's existing browser session. Treat the supplied Veo URL as the authoritative match target.
 
 ## Session and navigation
 
