@@ -15,7 +15,7 @@ This repository is a Codex marketplace for ClubATX agent skills. It distributes 
 - map Veo teams to the canonical ClubATX fixture teams;
 - resolve jersey-bearing analytics against the current fixture lineup;
 - preview every proposed database mutation and request confirmation;
-- atomically save the analytics payload, official score, and confirmed player statistics; and
+- atomically save the analytics payload, goal/assist/card timeline, official score, and confirmed player statistics; and
 - read the saved rows back and verify the complete import.
 
 The workflow explicitly detects partial imports. Saved analytics or imported events do not finalize a ClubATX fixture: both `fixtures.home_score` and `fixtures.away_score` must be non-null and match the confirmed result. A numeric zero is a valid recorded score.
@@ -88,7 +88,7 @@ The workflow writes only the confirmed fixture-scoped data:
 
 | Destination | Purpose |
 | --- | --- |
-| `public.fixture_match_stats` | Canonical match, team, and event analytics payload |
+| `public.fixture_match_stats` | Canonical match and team analytics plus the ordered goal, assist, yellow-card, and red-card timeline |
 | `public.fixtures.home_score` | Confirmed official home score |
 | `public.fixtures.away_score` | Confirmed official away score |
 | `public.fixture_player_match_stats` | Confirmed athlete-linked player statistics, when available |

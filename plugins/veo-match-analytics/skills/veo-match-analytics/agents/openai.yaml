@@ -1,4 +1,4 @@
 interface:
   display_name: "Veo Match Analytics"
-  short_description: "Persist Veo analytics and exact player times"
-  default_prompt: "Use $veo-match-analytics to extract this Veo match's analytics and exact player playing time, confirm fixture mappings, and save verified data in Supabase."
+  short_description: "Persist Veo analytics and key-event timelines"
+  default_prompt: "Use $veo-match-analytics to extract this Veo match's analytics, key-event timeline, and exact player playing time, confirm fixture mappings, and save verified data in Supabase."

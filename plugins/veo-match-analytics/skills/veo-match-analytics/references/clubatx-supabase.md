@@ -10,7 +10,7 @@ Use this reference only after Veo extraction is complete and persistence is requ
 - `public.fixtures.video_url` stores the full user-supplied Veo match URL after replacing the first `#/analysis/` route prefix with `#/`. Preserve every other character. If that route prefix is absent, store the supplied URL unchanged.
 - ClubATX has no independent fixture-status column in this workflow. Downstream consumers treat both official score columns being non-null as the completion signal. A 0 is a recorded score; `null` means the fixture is still unfinalized.
 - `public.fixture_match_stats` is one row per fixture. Saving the same fixture again intentionally replaces its complete payload.
-- Individual Veo events belong in the payload's `key_events` array. Do not insert them into `public.fixture_events`; that table represents manually curated result events and has a narrower event-type model.
+- Veo goals, assists, yellow cards, and red cards belong in the payload's ordered `key_events` array so the public fixture page can render the imported timeline. Do not insert them into `public.fixture_events`; that table represents manually curated result events and has a separate provenance and event model.
 - If `fixture_match_stats` does not exist, stop and tell the user that the repository migration `supabase/migrations/20260921190951_fixture_match_stats.sql` must be applied. Do not create or alter schema during an import run.
 
 ## Resolve the fixture
@@ -166,7 +166,8 @@ The payload contains exactly `match`, `teams`, and `key_events` at the top level
       "video_time_seconds": 129,
       "team": "Database Home Team",
       "source_team": "Veo home-team label",
-      "event_type": "pass",
+      "event_type": "goal",
+      "source_event_type": "goal",
       "status": null,
       "jersey_number": 25,
       "player_name": null,
@@ -188,7 +189,8 @@ Validate before saving:
 - Inside/outside goals do not exceed their corresponding attempts.
 - The two possession percentages total 100 within 0.1.
 - When momentum is available, both momentum percentages are finite numbers from 0 through 100 and total 100 within 0.1. When a trusted match response explicitly reports momentum unavailable and no rendered momentum section exists, both values are `null`; never accept one null and one numeric value.
-- `key_events` is a complete array, including zero events only when the trusted response explicitly returns a complete empty result. Each object contains exactly the fields documented in `veo-network-events.md`.
+- `key_events` is the complete goal/assist/yellow-card/red-card timeline, including zero events only when the complete trusted feed contains none of those types. Each object contains exactly the fields documented in `veo-network-events.md`.
+- Every `event_type` is one of `goal`, `assist`, `yellow_card`, or `red_card`; `source_event_type` retains the normalized source label when available.
 - Event `sequence` values are unique, contiguous, and start at zero. Stable non-null `source_event_id` values are unique.
 - Every event `team` is one of the two canonical team keys. Each `source_team` agrees with the confirmed Veo-to-database mapping.
 - Event numeric values satisfy the nullability and ranges in the event reference; strings are normalized without inventing unavailable attribution.
@@ -198,7 +200,7 @@ Validate before saving:
 
 The rendered team metrics and event feed are separate source scopes. `teams.*.events.shots` and `total_attempts` come from the rendered team table or verified equivalent export; they are not recomputed from `key_events`. An event-feed count may legitimately differ. Preserve both, show the exact discrepancy in the preview, and do not change records or team metrics solely to force equality.
 
-When adding events to an existing row, preserve its validated `match` and `teams` objects and replace the whole `key_events` array. Never append without reading the saved row first. The repository's HTTP match-stats validator may lag this extended JSONB shape, so this import workflow uses the SQL connector and verifies the saved JSON directly.
+When refreshing events on an existing row, preserve its validated `match` and `teams` objects and replace the whole `key_events` timeline. Never append without reading the saved row first. The public fixture page reads this array from `fixture_match_stats.payload`; verify the saved array's order, types, period, clock, team, and athlete fields after writing.
 
 ## Save and verify
 
