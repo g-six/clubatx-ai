@@ -43,9 +43,23 @@ A trusted player-stat response must:
 
 Use the response to extract the complete player collection only after these checks pass. Preserve the rendered table's labels, units, displayed precision, column order, and missing-value semantics. Do not turn a missing field into zero, infer a player name from a jersey, or recalculate one metric from another. If the response contains additional undocumented fields that are not represented in the current table or persistence schema, report them separately rather than inserting them into a known column.
 
+### Exact playing-time response
+
+A trusted exact playing-time response must:
+
+- identify the current match through a stable match identifier correlated with the match page;
+- identify the player-stat table's confirmed Veo team, or expose a team identifier that maps unambiguously to it;
+- contain unique non-negative integer jersey numbers and non-negative integer `secondsPlayed` values;
+- expose an aggregate total row for each jersey when it also exposes period or drill rows; and
+- satisfy `Math.round(secondsPlayed / 60)` for at least three rendered tracked-minute rows, and preferably every available row.
+
+Physical-metrics responses may contain period rows plus an aggregate row such as `drill: "ALL"`. Treat the aggregate row as the exact match total. Never add the aggregate to its component period rows, and never multiply the rendered rounded minutes by 60. If there is no clearly identified aggregate total, keep the period rows separate and stop before a playing-time write rather than guessing how they combine.
+
+Exact seconds and rendered tracked minutes are related verification signals but different source fields. Preserve the exact response seconds for `fixture_player_playing_time`; preserve the displayed rounded minutes for `fixture_player_match_stats`.
+
 ## Cross-source handling
 
-Keep match metadata, team statistics, player statistics, and events as separate source scopes even when one response contains more than one scope. Correlate stable IDs across responses, but do not derive one dataset from another.
+Keep match metadata, team statistics, displayed player statistics, exact playing time, and events as separate source scopes even when one response contains more than one scope. Correlate stable IDs across responses, but do not derive one dataset from another.
 
 - Prefer a verified analytics response for complete extraction when it agrees with the rendered panel.
 - Keep the rendered panel authoritative for human-facing labels, units, displayed precision, and any value that conflicts with the response.

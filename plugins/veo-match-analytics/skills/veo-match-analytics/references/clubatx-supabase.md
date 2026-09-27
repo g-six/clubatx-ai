@@ -65,13 +65,13 @@ Use the original validated `https://app.veo.co` URL supplied by the user, not a 
 
 Run this workflow after the user confirms the home/away mapping and before building the final payload.
 
-1. Collect the distinct `(canonical team, jersey_number)` pairs from `key_events` and the rendered player-statistics table where `jersey_number` is non-null. Keep identical jersey numbers on opposing teams separate.
+1. Collect the distinct `(canonical team, jersey_number)` pairs from `key_events`, the rendered player-statistics table, and verified exact playing-time rows where `jersey_number` is non-null. Keep identical jersey numbers on opposing teams separate.
 2. Query `public.fixture_lineups` for the confirmed fixture and corresponding division team to find current `id`, `player_name`, `athlete_slug`, and jersey matches. Present all unique linked matches and every missing, ambiguous, or unlinked jersey in one grouped preview. A unique lineup match is a candidate, not proof. The user may confirm using all shown current lineup links in one batch, correct individual mappings, or explicitly leave any or all jerseys unlinked.
 3. If the user provides a name instead of accepting a current linked lineup row, search `public.athletes` using that user-confirmed name. Select only `slug`, `first_name`, `last_name`, and `date_of_birth`; do not fetch or display contact or address fields.
 4. When exactly one athlete matches, show the canonical full name and athlete slug and ask the user to confirm the link.
 5. When multiple athletes match, list every candidate with full name, date of birth (or `unknown` when null), and slug. Ask the user to select one exact candidate. Never choose based on result order, age, team, or similarity alone.
 6. When no athlete matches, ask the user to correct the name or explicitly leave that team/jersey unlinked. Do not create or edit an athlete record during this import.
-7. For a confirmed candidate, write the athlete's canonical database full name to `player_name` and its slug to `athlete_slug` on every event with that canonical team and jersey number. Use the same confirmed lineup identity for a matching player-stat row. For an explicitly skipped mapping, retain a trustworthy source-provided event name when present and store event `athlete_slug` as `null`; otherwise keep both event fields `null`. Player-stat rows that require a relational athlete link are skipped and reported when unlinked.
+7. For a confirmed candidate, write the athlete's canonical database full name to `player_name` and its slug to `athlete_slug` on every event with that canonical team and jersey number. Use the same confirmed lineup identity for matching player-stat and exact playing-time rows. For an explicitly skipped mapping, retain a trustworthy source-provided event name when present and store event `athlete_slug` as `null`; otherwise keep both event fields `null`. Player-stat or exact playing-time rows that require a relational athlete link are skipped and reported when unlinked.
 
 Every retry starts from fresh database state. If the user says fixture jersey numbers or athlete links were added, changed, or should be tried again, re-query both fixture sides and rebuild the complete mapping preview. Do not merge stale candidate rows into the refreshed result. Any revised mapping invalidates an earlier write confirmation.
 
@@ -121,7 +121,7 @@ The payload contains exactly `match`, `teams`, and `key_events` at the top level
         "outside_box_attempts": 0,
         "outside_box_goals": 0
       },
-      "momentum_percent": 0
+      "momentum_percent": null
     },
     "Database Away Team": {
       "possession_percent": 0,
@@ -152,7 +152,7 @@ The payload contains exactly `match`, `teams`, and `key_events` at the top level
         "outside_box_attempts": 0,
         "outside_box_goals": 0
       },
-      "momentum_percent": 0
+      "momentum_percent": null
     }
   },
   "key_events": [
@@ -177,17 +177,17 @@ The payload contains exactly `match`, `teams`, and `key_events` at the top level
 }
 ```
 
-The zeros above illustrate numeric types only. Never use them as defaults for missing Veo data.
+The numeric zeros above illustrate numeric types only. Never use them as defaults for missing Veo data. The example uses null momentum to illustrate the sole nullable team metric; it is valid only when a trusted match response explicitly reports that momentum data is unavailable and the rendered analytics exposes no momentum section. Under that condition both teams must use `null`. Do not use null for a still-processing, access-gated, ambiguous, or unobserved momentum source, and never substitute possession or another metric.
 
 Validate before saving:
 
 - The two team keys are exactly the confirmed canonical database names and appear identically in `match.score`.
-- Counts are non-negative safe integers, including every `passes_by_third` value. Percentages are finite numbers from 0 through 100. If Veo displays pass-location percentages, convert them to counts only when the source exposes a reliable denominator; otherwise stop and request the missing counts rather than storing percentages.
+- Counts are non-negative safe integers, including every `passes_by_third` value. Percentages other than the explicitly unavailable momentum exception are finite numbers from 0 through 100. If Veo displays pass-location percentages, convert them to counts only when the source exposes a reliable denominator; otherwise stop and request the missing counts rather than storing percentages.
 - Each score equals that team's `events.goals`.
 - `shots` does not exceed `total_attempts`.
 - Inside/outside goals do not exceed their corresponding attempts.
 - The two possession percentages total 100 within 0.1.
-- The two momentum percentages total 100 within 0.1.
+- When momentum is available, both momentum percentages are finite numbers from 0 through 100 and total 100 within 0.1. When a trusted match response explicitly reports momentum unavailable and no rendered momentum section exists, both values are `null`; never accept one null and one numeric value.
 - `key_events` is a complete array, including zero events only when the trusted response explicitly returns a complete empty result. Each object contains exactly the fields documented in `veo-network-events.md`.
 - Event `sequence` values are unique, contiguous, and start at zero. Stable non-null `source_event_id` values are unique.
 - Every event `team` is one of the two canonical team keys. Each `source_team` agrees with the confirmed Veo-to-database mapping.
@@ -243,4 +243,4 @@ If the SQL connector or another transaction-capable database operation is unavai
 
 Require the statement to return exactly one joined fixture row; zero rows means the fixture update failed and must not be reported as success. Then run separate filtered `select` queries by the same fixture ID and compare the returned JSON, official scores, exact `video_url`, and any player rows with the complete intended import. Require both score values to be non-null (while accepting numeric zero) and exactly equal to the confirmed final score. Require `video_url` to exactly equal the derived full Veo URL. If the analytics payload exists but either official score is null or mismatched, call the result an incomplete import and do not say the fixture is final, complete, or successfully imported. Report a `video_url` mismatch as failed verification rather than claiming the import succeeded.
 
-Never log, print, or request Supabase secrets. Never broaden the write beyond the confirmed analytics row, the two official-score columns and `video_url` on the confirmed fixture row, and any explicitly previewed and confirmed player-stat rows.
+Never log, print, or request Supabase secrets. Never broaden the write beyond the confirmed analytics row, the two official-score columns and `video_url` on the confirmed fixture row, and any explicitly previewed and confirmed player-stat or exact playing-time rows.
