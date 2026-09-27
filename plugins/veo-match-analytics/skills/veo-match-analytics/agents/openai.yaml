@@ -1,0 +1,4 @@
+interface:
+  display_name: "Veo Match Analytics"
+  short_description: "Persist Veo match and linked player analytics"
+  default_prompt: "Use $veo-match-analytics to separately extract this Veo match's team, player, and event analytics, confirm the current fixture and athlete mappings, and save and verify the supported data in Supabase."

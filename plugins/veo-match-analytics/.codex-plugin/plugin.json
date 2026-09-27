@@ -1,0 +1,29 @@
+{
+  "name": "veo-match-analytics",
+  "version": "0.1.0+codex.20260927042637",
+  "description": "Open Veo match analysis pages, extract rendered team, player, and event analytics, and save confirmed match data, the official score, and athlete-linked player statistics to Supabase.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Veo Match Analytics",
+    "shortDescription": "Save Veo match and linked player analytics",
+    "longDescription": "Open a Veo match analysis URL in the browser, pause for sign-in when required, separately extract rendered team statistics, player statistics, and the observed XHR/fetch event feed, confirm the ClubATX fixture, team mapping, official score, and current lineup athlete links, then persist and verify the match payload, score, and athlete-linked player rows in Supabase.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://www.veo.co/",
+    "defaultPrompt": [
+      "Extract and save analytics from this Veo match URL",
+      "Extract and persist the athlete-linked player statistics for this Veo match",
+      "Compare the team and event analytics on this Veo match page",
+      "Import the individual Veo event feed for this fixture"
+    ],
+    "brandColor": "#1BC47D"
+  }
+}

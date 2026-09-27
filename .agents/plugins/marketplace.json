@@ -1,0 +1,20 @@
+{
+  "name": "clubatx-ai",
+  "interface": {
+    "displayName": "ClubATX AI"
+  },
+  "plugins": [
+    {
+      "name": "veo-match-analytics",
+      "source": {
+        "source": "local",
+        "path": "./plugins/veo-match-analytics"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
