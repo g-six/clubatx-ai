@@ -1,0 +1,27 @@
+{
+  "name": "enter-fixture-result",
+  "version": "0.1.0",
+  "description": "Securely preview, enter, or replace completed ClubATX fixture scoresheets through the OAuth MCP endpoint or local credential-backed runner.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Enter Fixture Result",
+    "shortDescription": "Securely record completed fixture scoresheets",
+    "longDescription": "Find a completed ClubATX fixture, resolve player recipients, preview the calculated score and event changes, require explicit approval, then securely save and verify the scoresheet through the OAuth MCP endpoint or the local credential-backed runner.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Enter a completed fixture result",
+      "Correct an existing fixture scoresheet",
+      "Preview fixture result changes before saving"
+    ],
+    "brandColor": "#E63946"
+  }
+}

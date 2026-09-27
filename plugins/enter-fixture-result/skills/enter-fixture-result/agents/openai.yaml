@@ -1,0 +1,4 @@
+interface:
+  display_name: "Enter Fixture Result"
+  short_description: "Record and validate a completed fixture scoresheet"
+  default_prompt: "Use $enter-fixture-result to enter a completed fixture result securely."
