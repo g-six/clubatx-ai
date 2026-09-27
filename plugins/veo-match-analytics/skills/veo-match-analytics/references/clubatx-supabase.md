@@ -7,6 +7,7 @@ Use this reference only after Veo extraction is complete and persistence is requ
 - Resolve the current connected Supabase project. Prefer the single active project named `clubatx`; if multiple projects could match, ask the user to choose before querying.
 - The match ID supplied by the user is `public.fixtures.id` and is stored as `public.fixture_match_stats.fixture_id`.
 - `public.fixtures.home_score` and `public.fixtures.away_score` are the official result fields used by the ClubATX fixture page. A complete confirmed import updates these two columns together with the analytics payload.
+- `public.fixtures.video_url` stores the full user-supplied Veo match URL after replacing the first `#/analysis/` route prefix with `#/`. Preserve every other character. If that route prefix is absent, store the supplied URL unchanged.
 - ClubATX has no independent fixture-status column in this workflow. Downstream consumers treat both official score columns being non-null as the completion signal. A 0 is a recorded score; `null` means the fixture is still unfinalized.
 - `public.fixture_match_stats` is one row per fixture. Saving the same fixture again intentionally replaces its complete payload.
 - Individual Veo events belong in the payload's `key_events` array. Do not insert them into `public.fixture_events`; that table represents manually curated result events and has a narrower event-type model.
@@ -23,6 +24,7 @@ select
   f.start_time,
   f.home_score,
   f.away_score,
+  f.video_url,
   home_ts.team as home_team,
   away_ts.team as away_team
 from public.fixtures as f
@@ -54,6 +56,10 @@ After the home and away mappings are confirmed, show the current database `home_
 - Require non-negative safe integers for both proposed scores and require each to equal the corresponding canonical team's `events.goals` value.
 - Do not infer a final result from a playback-position scoreboard, title order, raw event count, or analytics still marked as processing.
 - Event-only and athlete-attribution corrections preserve the current official score unless the user separately confirms a score change.
+
+## Normalize the fixture video URL
+
+Use the original validated `https://app.veo.co` URL supplied by the user, not a browser redirect or a reconstructed URL. Replace the first exact `#/analysis/` substring with `#/` and leave all remaining characters unchanged. For example, `https://app.veo.co/matches/example/#/analysis/abc?foo=1` becomes `https://app.veo.co/matches/example/#/abc?foo=1`. If `#/analysis/` is absent, the normalized value is the original URL. Show the current and proposed `fixtures.video_url` values in the final preview and include the proposed value in the same write confirmation as the analytics and official score.
 
 ## Resolve athletes for jersey-bearing analytics
 
@@ -214,9 +220,10 @@ with saved_stats as (
 saved_fixture as (
   update public.fixtures
   set home_score = <confirmed_home_score>,
-      away_score = <confirmed_away_score>
+      away_score = <confirmed_away_score>,
+      video_url = $veo_url$<derived_full_veo_url>$veo_url$
   where id = <validated_match_id>
-  returning id, home_score, away_score
+  returning id, home_score, away_score, video_url
 )
 select
   saved_stats.fixture_id,
@@ -224,15 +231,16 @@ select
   saved_stats.created_at,
   saved_stats.updated_at,
   saved_fixture.home_score,
-  saved_fixture.away_score
+  saved_fixture.away_score,
+  saved_fixture.video_url
 from saved_stats
 join saved_fixture on saved_fixture.id = saved_stats.fixture_id;
 ```
 
-Before executing, confirm that the chosen dollar-quote delimiter does not occur in the serialized JSON. Execute exactly one mutating statement. When linked player statistics are also confirmed, extend this statement with an input-values CTE and a `saved_player_stats` upsert CTE following [clubatx-player-stats.md](clubatx-player-stats.md), and return its saved-row count alongside the fixture result. Do not issue a separate player write that could leave only half of a confirmed combined import committed.
+Before executing, confirm that each chosen dollar-quote delimiter does not occur in the value it encloses. Execute exactly one mutating statement. When linked player statistics are also confirmed, extend this statement with an input-values CTE and a `saved_player_stats` upsert CTE following [clubatx-player-stats.md](clubatx-player-stats.md), and return its saved-row count alongside the fixture result. Do not issue a separate player write that could leave only half of a confirmed combined import committed.
 
 If the SQL connector or another transaction-capable database operation is unavailable, do not approximate this with separate analytics and fixture REST mutations. Stop before writing so the workflow cannot leave another analytics-present/score-null partial import.
 
-Require the statement to return exactly one joined fixture row; zero rows means the fixture update failed and must not be reported as success. Then run separate filtered `select` queries by the same fixture ID and compare the returned JSON, official scores, and any player rows with the complete intended import. Require both score values to be non-null (while accepting numeric zero) and exactly equal to the confirmed final score. If the analytics payload exists but either official score is null or mismatched, call the result an incomplete import and do not say the fixture is final, complete, or successfully imported.
+Require the statement to return exactly one joined fixture row; zero rows means the fixture update failed and must not be reported as success. Then run separate filtered `select` queries by the same fixture ID and compare the returned JSON, official scores, exact `video_url`, and any player rows with the complete intended import. Require both score values to be non-null (while accepting numeric zero) and exactly equal to the confirmed final score. Require `video_url` to exactly equal the derived full Veo URL. If the analytics payload exists but either official score is null or mismatched, call the result an incomplete import and do not say the fixture is final, complete, or successfully imported. Report a `video_url` mismatch as failed verification rather than claiming the import succeeded.
 
-Never log, print, or request Supabase secrets. Never broaden the write beyond the confirmed analytics row, the two official-score columns on the confirmed fixture row, and any explicitly previewed and confirmed player-stat rows.
+Never log, print, or request Supabase secrets. Never broaden the write beyond the confirmed analytics row, the two official-score columns and `video_url` on the confirmed fixture row, and any explicitly previewed and confirmed player-stat rows.

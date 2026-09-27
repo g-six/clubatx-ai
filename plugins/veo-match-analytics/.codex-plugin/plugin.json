@@ -1,6 +1,6 @@
 {
   "name": "veo-match-analytics",
-  "version": "0.1.0+codex.20260927042637",
+  "version": "0.1.0+codex.20260927045457",
   "description": "Open Veo match analysis pages, extract rendered team, player, and event analytics, and save confirmed match data, the official score, and athlete-linked player statistics to Supabase.",
   "author": {
     "name": "Local developer"
