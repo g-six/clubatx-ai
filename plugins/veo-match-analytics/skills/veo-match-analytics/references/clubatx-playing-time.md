@@ -1,53 +1,30 @@
 # ClubATX exact playing-time persistence
 
-Read this reference when a verified Veo response exposes exact player `secondsPlayed` and the user asks to persist playing time.
+Read this reference when a verified Veo response exposes exact player `secondsPlayed` and persistence is requested.
 
 ## Destination and source rules
 
-- Store exact seconds in `public.fixture_player_playing_time`; do not store them in `fixture_match_stats.payload` or replace `fixture_player_match_stats.tracked_minutes`.
-- The compatible schema is introduced by the `track_fixture_player_playing_time` migration. Check that the table exists before preparing a write.
-- Each row is identified by `(fixture_id, fixture_lineup_id)` and is also unique by `(fixture_id, athlete_slug)`.
+- Store exact seconds in the `played_seconds` column of the player's consolidated `public.fixture_player_analytics` row. Never use the retired `fixture_player_playing_time` table and never put playing time in `fixture_match_stats.payload`.
+- Merge exact time with the same fixture-side/source/jersey row that holds displayed player metrics. If only exact time is available, keep unavailable nullable metrics null; never invent zeros.
 - Preserve the verified aggregate `secondsPlayed` integer exactly. The UI may display `Math.round(played_seconds / 60)`, but the database value remains exact seconds.
-- When the response contains period rows and an aggregate row such as `drill: "ALL"`, use the aggregate row only. Never add it to the component rows.
-- Never derive exact seconds by multiplying rendered tracked minutes by 60.
-- Omitted rows are preserved. Do not delete earlier playing-time rows without an explicit destructive request and confirmation.
+- When the response contains period rows and an aggregate row such as `drill: "ALL"`, use the aggregate row only. Never add the aggregate to component rows.
+- Never derive exact seconds by multiplying rendered tracked minutes by 60, and never replace the separate displayed `tracked_minutes` value with a seconds conversion.
 
-## Resolve the athlete link
+## Resolve and consolidate
 
-1. Determine the confirmed canonical fixture side that owns the exact-time response.
+1. Determine the confirmed canonical fixture side and its `division_team_id` for each exact-time response.
 2. Require one unique non-negative integer jersey number per aggregate source row.
-3. Refresh `public.fixture_lineups` using the confirmed `fixture_id`, side's `division_team_id`, and `jersey_number`. Select `id`, `athlete_slug`, `player_name`, and `jersey_number`.
-4. Treat zero matches, duplicate jerseys, and null athlete slugs as unresolved. Never choose a player from the other fixture side or infer an athlete from the jersey alone.
-5. Show every proposed jersey-to-lineup-to-athlete mapping and require confirmation immediately before writing.
-
-Skip unresolved rows and report them. A confirmed row uses the lineup `id` as `fixture_lineup_id` and its exact `athlete_slug`.
+3. Merge the exact time into the player object with the same confirmed `division_team_id` and `jersey_number`.
+4. Refresh `public.fixture_lineups` for that fixture, division team, and jersey. A unique linked row is a candidate until the user confirms it.
+5. Store a confirmed link as the exact `fixture_lineup_id` and `athlete_slug` pair. Store both fields as null for zero matches, duplicate matches, null athlete slugs, or a user-declined link. The analytics row is still persisted.
+6. If the user changes a lineup or jersey assignment, discard cached results and rebuild the consolidated replacement set before obtaining a new write confirmation.
 
 ## Validate and preview
 
-Require each `played_seconds` value to be a non-negative integer no greater than 86400. Verify the response against the rendered table with `Math.round(played_seconds / 60)` for at least three jerseys and preferably every available row. A mismatch is a data-quality issue: show both values and stop the affected playing-time write.
+Require each `played_seconds` value to be a non-negative integer no greater than 86400. Verify the response against the rendered table with `Math.round(played_seconds / 60)` for at least three jerseys and preferably every row. A mismatch is a data-quality issue: show both values and stop the affected player-data write.
 
-Preview the source team, exact row count, linked write count, skipped jerseys, every confirmed mapping, exact seconds, and rounded display minutes. State that `public.fixture_player_playing_time` will be upserted and whether any other confirmed import data is part of the same transaction.
+Preview the source team, total player-row count, linked and unresolved counts, every link pair, exact seconds, rounded display minutes, and whether displayed player metrics were merged into the same rows.
 
 ## Save and verify
 
-Use the Supabase SQL connector. Include the rows in the complete import's atomic statement when practical. For a later playing-time-only correction, perform one upsert statement after the fixture, side, and mappings have been reconfirmed:
-
-```sql
-insert into public.fixture_player_playing_time (
-  fixture_id,
-  fixture_lineup_id,
-  athlete_slug,
-  played_seconds,
-  source,
-  updated_at
-)
-values (...)
-on conflict (fixture_id, fixture_lineup_id) do update
-set
-  athlete_slug = excluded.athlete_slug,
-  played_seconds = excluded.played_seconds,
-  source = excluded.source,
-  updated_at = now();
-```
-
-Use a short lower-snake-case source such as `veo`. Read back only the confirmed fixture's rows and join them to `fixture_lineups` on the complete `(fixture_id, fixture_lineup_id, athlete_slug)` identity. Verify the returned count, every athlete slug, exact `played_seconds`, and source. Report rounded minutes only as a display check, not as the persisted value.
+Follow [clubatx-supabase.md](clubatx-supabase.md). Pass the complete player replacement array to `public.save_fixture_performance`; do not upsert playing time separately. After the transaction, read `public.fixture_player_analytics` by the confirmed fixture and source and verify every exact `played_seconds`, side, jersey, link pair, and row count. Report rounded minutes only as a display check.

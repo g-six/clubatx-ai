@@ -1,4 +1,4 @@
 interface:
   display_name: "Veo Match Analytics"
-  short_description: "Persist Veo analytics and key-event timelines"
-  default_prompt: "Use $veo-match-analytics to extract this Veo match's analytics, key-event timeline, and exact player playing time, confirm fixture mappings, and save verified data in Supabase."
+  short_description: "Persist Veo analytics and raw-video event links"
+  default_prompt: "Use $veo-match-analytics to extract this Veo match's analytics, authoritative half duration, cumulative event minutes, complete event feed, exact player playing time, and raw MP4 event links with a confirmed 3-second pre-roll by default; confirm fixture mappings and replacements, then atomically save and verify the data in Supabase."

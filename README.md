@@ -13,9 +13,10 @@ This repository is a Codex marketplace for ClubATX agent skills. It distributes 
 - open an `https://app.veo.co/...` match in the user's existing browser session;
 - extract rendered match, team, player, and event analytics;
 - map Veo teams to the canonical ClubATX fixture teams;
+- reconcile the fixture half duration with verified Veo timing and normalize period-local clocks to cumulative match minutes;
 - resolve jersey-bearing analytics against the current fixture lineup;
 - preview every proposed database mutation and request confirmation;
-- atomically save the analytics payload, goal/assist/card timeline, official score, and confirmed player statistics; and
+- atomically save the analytics payload, complete supported player-event projection with raw-video timestamp links, official score, and consolidated player statistics; and
 - read the saved rows back and verify the complete import.
 
 The workflow explicitly detects partial imports. Saved analytics or imported events do not finalize a ClubATX fixture: both `fixtures.home_score` and `fixtures.away_score` must be non-null and match the confirmed result. A numeric zero is a valid recorded score.
@@ -88,13 +89,13 @@ The workflow writes only the confirmed fixture-scoped data:
 
 | Destination | Purpose |
 | --- | --- |
-| `public.fixture_match_stats` | Canonical match and team analytics plus the ordered goal, assist, yellow-card, and red-card timeline |
-| `public.fixture_events` | Public fixture-page projection of goals, assists, yellow cards, and red cards |
+| `public.fixture_match_stats` | Canonical match and team analytics plus the complete ordered Veo event feed |
+| `public.fixture_events` | Supported player events with raw `.mp4#t=<seconds>` links using a confirmed 3-second pre-roll by default |
 | `public.fixtures.home_score` | Confirmed official home score |
 | `public.fixtures.away_score` | Confirmed official away score |
-| `public.fixture_player_match_stats` | Confirmed athlete-linked player statistics, when available |
+| `public.fixture_player_analytics` | Consolidated player statistics, exact seconds, source identity, and optional confirmed athlete links |
 
-It does not use analytics events to infer athlete identity, and it does not modify teams, athletes, lineups, or unrelated fixture fields. Existing `fixture_events` are preserved; verified Veo key events are added idempotently for the public timeline, and event rows alone are not considered proof that a fixture is finalized.
+It does not use analytics events to infer athlete identity, and it does not modify teams, athletes, lineups, or unrelated fixture fields. A confirmed complete import replaces the fixture's existing `fixture_events` projection in the same transaction, so the preview explicitly identifies the destructive scope—including any manually curated rows—before requesting final approval. Event rows alone are not proof that a fixture is finalized.
 
 ## Repository layout
 

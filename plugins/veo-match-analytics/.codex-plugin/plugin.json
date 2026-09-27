@@ -1,15 +1,15 @@
 {
   "name": "veo-match-analytics",
-  "version": "0.1.0+codex.20260927083455",
-  "description": "Open Veo match analysis pages, extract verified team and player analytics plus key-event timelines, and save confirmed data to Supabase.",
+  "version": "0.1.0+codex.20260927175549",
+  "description": "Extract verified Veo analytics and exact event markers, then save confirmed fixture, player, and raw-video event data to Supabase.",
   "author": {
     "name": "Local developer"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Veo Match Analytics",
-    "shortDescription": "Save Veo analytics and key-event timelines",
-    "longDescription": "Open a Veo match analysis URL in the browser, pause for sign-in when required, inspect the Fetch/XHR responses triggered by the match, Stats, Player Stats Overview, and Events panels, correlate each response with rendered data, confirm the ClubATX fixture, team mapping, official score, and current lineup athlete links, then persist and verify match analytics, the goal/assist/card timeline, displayed player statistics, and exact player playing-time seconds in Supabase.",
+    "shortDescription": "Save Veo analytics and raw-video event links",
+    "longDescription": "Open a Veo match analysis URL in the browser, pause for sign-in when required, inspect page-observed analytics, event, and media requests, confirm the ClubATX fixture, corrected side mapping, official score, Veo-authoritative half duration, athlete links, event-link pre-roll, and destructive event replacement, then atomically persist and verify match analytics, cumulative event minutes, consolidated player statistics, exact playing-time seconds, and supported player events linked to the raw MP4 recording with a 3-second playback pre-roll by default.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [
@@ -21,7 +21,7 @@
     "defaultPrompt": [
       "Extract and save analytics from this Veo match URL",
       "Import exact player playing times from this Veo match",
-      "Import the goals, assists, and card timeline from this Veo match"
+      "Import player events with raw-video links and a 3-second pre-roll from this Veo match"
     ],
     "brandColor": "#1BC47D"
   }

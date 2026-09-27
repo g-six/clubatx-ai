@@ -1,35 +1,52 @@
-# ClubATX player-stat persistence
+# ClubATX consolidated player analytics
 
-Read this reference only when Veo exposes `Player Stats Overview` and the user asks to persist it.
+Read this reference when Veo exposes player-level statistics and the user asks to persist them.
 
-## Destination and availability
+## Canonical destination
 
-- Store player rows in `public.fixture_player_match_stats`; do not embed them in `fixture_match_stats.payload`.
-- The compatible schema is introduced by `supabase/migrations/20260927035819_track_fixture_player_match_stats.sql`.
-- Before preparing a write, query the catalog or table for availability. If the table is absent, stop and identify the migration; do not create or alter schema during an import.
-- Each row is identified by `(fixture_id, fixture_lineup_id)` and is also unique by `(fixture_id, athlete_slug)`.
-- The composite foreign key `(fixture_id, fixture_lineup_id, athlete_slug)` requires the saved athlete to be the athlete already linked to that exact fixture-lineup row.
-- Omitted rows are preserved. Do not delete prior player statistics unless the user explicitly asks to replace or remove them and confirms the destructive scope.
+- Store every valid source player row in `public.fixture_player_analytics`. The retired `fixture_player_match_stats` and `fixture_player_playing_time` tables must never be used.
+- One row is identified by `(fixture_id, division_team_id, source, jersey_number)`. Keep the same jersey on opposing fixture sides as two distinct rows.
+- A complete import passes the full replacement set for one fixture and source to `public.save_fixture_performance`; the function deletes and replaces that fixture/source set atomically with the match payload and official fixture result.
+- Do not write this table directly. Do not pass a partial player array. Use `p_players = null` when player analytics are outside the requested write so existing rows remain unchanged. An empty array clears the source set and therefore requires explicit destructive confirmation.
+- Unresolved rows are first-class analytics rows. Preserve them with both `fixture_lineup_id` and `athlete_slug` set to `null`; never discard a row or attach it to another athlete merely because its jersey is unresolved.
+
+## Identity and link columns
+
+Populate these columns from confirmed fixture context and the verified Veo source:
+
+| Meaning | Database field | Rule |
+| --- | --- | --- |
+| ClubATX fixture side | `division_team_id` | Use the confirmed fixture home or away `division_team_id`, never a Veo ID or team-name lookup. |
+| source | `source` | Use a short lower-snake-case value such as `veo`. |
+| jersey | `jersey_number` | Required integer from 0 through 99. |
+| Veo team label | `source_team` | Preserve the verified source label; use null only when unavailable. |
+| Veo player ID | `source_player_id` | Preserve a stable source ID when the response supplies one; otherwise null. |
+| Veo player name | `source_player_name` | Preserve a trustworthy source name when supplied; otherwise null. Do not substitute the ClubATX athlete name. |
+| confirmed lineup row | `fixture_lineup_id` | Use the exact confirmed `fixture_lineups.id`; otherwise null. |
+| confirmed athlete | `athlete_slug` | Use the slug on that exact confirmed lineup row; otherwise null. It must be null whenever `fixture_lineup_id` is null. |
+
+The link pair must either both be supplied or both be null. A jersey match alone does not authorize a link.
 
 ## Source-field mapping
 
-Use the rendered column labels and displayed units. Normalize only to these database names:
+Copy values only from a verified per-player source. Do not calculate player metrics from team totals or `key_events`.
 
-| Veo meaning | Database column | Rule |
+| Veo meaning | Database field | Rule |
 | --- | --- | --- |
-| tracked minutes | `tracked_minutes` | Store the displayed integer minutes; do not convert to seconds or infer exact playing time. |
-| distance in miles | `distance_miles` | Preserve the displayed numeric value. |
-| average speed in mph | `average_speed_mph` | Preserve the displayed numeric value. |
-| top speed in mph | `top_speed_mph` | Preserve the displayed numeric value. |
+| exact aggregate seconds | `played_seconds` | Preserve verified aggregate `secondsPlayed`; follow [clubatx-playing-time.md](clubatx-playing-time.md). |
+| tracked minutes | `tracked_minutes` | Store the displayed integer minutes; do not convert it to exact seconds. |
+| distance in miles | `distance_miles` | Preserve the displayed numeric value and unit. |
+| average speed in mph | `average_speed_mph` | Preserve the displayed numeric value and unit. |
+| top speed in mph | `top_speed_mph` | Preserve the displayed numeric value and unit. |
 | sprints | `sprints` | Copy the displayed count. |
 | high-intensity runs | `high_intensity_runs` | Copy the displayed count. |
-| total events | `total_events` | Copy the displayed count; do not sum other columns. |
-| goals | `goals` | Copy the displayed count. |
-| assists | `assists` | Copy the displayed count. |
-| goal involvements | `goal_involvements` | Copy the displayed count; do not recompute goals plus assists. |
-| conversion rate | `conversion_rate_percent` | Store the displayed percentage as 0 through 100, not as a 0-through-1 fraction. |
+| total events | `total_events` | Copy the source total; do not sum other fields. |
+| goals | `goals` | Copy the player-table value. |
+| assists | `assists` | Copy the player-table value. |
+| goal involvements | `goal_involvements` | Copy the source value; do not recompute goals plus assists. |
+| conversion rate | `conversion_rate_percent` | Store the displayed 0-through-100 percentage, not a fraction. |
 | shots | `shots` | Copy the displayed count; keep distinct from total attempts. |
-| total attempts | `total_attempts` | Copy the displayed count; do not derive it from shots or the event feed. |
+| total attempts | `total_attempts` | Copy the source count; do not derive it from shots. |
 | tackles | `tackles` | Copy the displayed count. |
 | corners | `corners` | Copy the displayed count. |
 | free kicks | `free_kicks` | Copy the displayed count. |
@@ -37,92 +54,35 @@ Use the rendered column labels and displayed units. Normalize only to these data
 | fouls | `fouls` | Copy the displayed count. |
 | penalty kicks | `penalty_kicks` | Copy the displayed count. |
 | goal kicks | `goal_kicks` | Copy the displayed count. |
+| passes | `passes` | Copy only from a verified player source; otherwise null. |
+| completed passes | `completed_passes` | Copy only from a verified player source; otherwise null. |
+| pass success | `pass_success_rate_percent` | Store a verified displayed 0-through-100 percentage; otherwise null. |
+| dribbles | `dribbles` | Copy only from a verified player source; otherwise null. |
+| interceptions | `interceptions` | Copy only from a verified player source; otherwise null. |
+| saves | `saves` | Copy only from a verified player source; otherwise null. |
 
-The current table requires all metric columns. If Veo omits a required column or displays a non-numeric placeholder, do not silently store zero. Report the affected rows and stop the player-stat write while leaving any separately confirmed match-payload write unchanged.
+Missing nullable source fields remain null. Never use zero as a missing-value placeholder. If a field required by the verified rendered player table is missing or non-numeric for only some rows, disclose the limitation and stop that player-data import rather than creating inconsistent rows.
 
 ## Resolve the athlete link
 
-1. Determine which confirmed canonical team owns the player table. Never assume it is the database home team merely because Veo shows it first.
-2. Require a non-negative integer jersey number for every row to persist. A displayed name without a jersey is insufficient for this schema.
-3. Query `public.fixture_lineups` using all three of: confirmed `fixture_id`, the corresponding fixture-side `division_team_id`, and `jersey_number`. Select `id`, `athlete_slug`, `player_name`, and `jersey_number`.
-4. Zero matches means the row is unresolved. Multiple matches mean the jersey is ambiguous. A single row with null `athlete_slug` is unlinked. Present these states; never choose another team, a similarly named player, or an athlete search result as a substitute.
-5. Confirm that the user accepts the current lineup links for these player rows. Then use the lineup row's `id` as `fixture_lineup_id` and its exact `athlete_slug` as `athlete_slug`.
-6. If the user changes jersey assignments or athlete links, discard all cached lineup results and repeat the query before rebuilding the write set.
+1. Determine the confirmed canonical fixture side that owns each source row.
+2. Query `public.fixture_lineups` using the confirmed `fixture_id`, that side's `division_team_id`, and `jersey_number`. Select `id`, `athlete_slug`, `player_name`, and `jersey_number`.
+3. Zero matches, duplicate matches, or a null athlete slug means unresolved. A unique linked row is only a candidate until the user confirms using the current fixture lineup.
+4. For a confirmed candidate, copy the lineup `id` and its exact `athlete_slug`. Do not search another fixture side or use a similarly named athlete as a substitute.
+5. If the user changes a lineup or jersey assignment, discard cached results, query the lineup again, rebuild every affected row, and obtain a fresh write confirmation.
 
-Player-stat rows with no confirmed link cannot satisfy the foreign key. Skip and report them. This does not require removing the same jersey's unlinked events from `fixture_match_stats.payload`; event JSON permits `athlete_slug: null`.
+## Consolidate and validate
 
-## Validate and preview
+Merge player-stat and exact-time source records by confirmed `division_team_id` and `jersey_number` before saving. Each output object contains the full identity/link fields plus every applicable metric column exactly once. Never merge the same jersey across opposing sides.
 
-Before the write, verify:
+Validate before preview:
 
-- every source row was copied cell-for-cell exactly once;
-- jerseys are unique within the source table's team scope;
-- each write row resolves to exactly one current lineup row and non-null athlete slug;
-- integer fields are non-negative integers; tracked minutes are at most 1440;
-- decimal fields are finite and non-negative, use no more than two decimals, speeds and percentages are at most 100, and distance is at most 1000;
-- `source` is a short lower-snake-case identifier such as `veo`;
-- no player-table metric was recalculated from team statistics or `key_events`.
+- the array contains every valid source player row for the fixture/source replacement set;
+- `(division_team_id, jersey_number)` is unique within the array;
+- each division team is exactly the fixture's confirmed home or away team;
+- jersey, whole-second, minute, and count fields are non-negative integers within database bounds;
+- decimal fields are finite, non-negative, and use no more than two decimal places;
+- both link fields are null or both exactly match the confirmed lineup row;
+- no metric was recalculated from team analytics or the event feed.
 
-Preview the extracted row count, linked write count, skipped rows with reasons, jersey-to-athlete mappings, units, and all displayed metrics. A confirmation made before a lineup refresh or data correction is stale and cannot authorize the revised rows.
-
-## Save and verify
-
-Use the Supabase SQL connector. Prefer one statement for the confirmed match payload, official score, and player rows so a failure rolls back the whole requested import. Construct player values from the validated rows and upsert with:
-
-```sql
-insert into public.fixture_player_match_stats (
-  fixture_id,
-  fixture_lineup_id,
-  athlete_slug,
-  source,
-  tracked_minutes,
-  distance_miles,
-  average_speed_mph,
-  top_speed_mph,
-  sprints,
-  high_intensity_runs,
-  total_events,
-  goals,
-  assists,
-  goal_involvements,
-  conversion_rate_percent,
-  shots,
-  total_attempts,
-  tackles,
-  corners,
-  free_kicks,
-  throw_ins,
-  fouls,
-  penalty_kicks,
-  goal_kicks,
-  updated_at
-)
-values (...)
-on conflict (fixture_id, fixture_lineup_id) do update
-set
-  athlete_slug = excluded.athlete_slug,
-  source = excluded.source,
-  tracked_minutes = excluded.tracked_minutes,
-  distance_miles = excluded.distance_miles,
-  average_speed_mph = excluded.average_speed_mph,
-  top_speed_mph = excluded.top_speed_mph,
-  sprints = excluded.sprints,
-  high_intensity_runs = excluded.high_intensity_runs,
-  total_events = excluded.total_events,
-  goals = excluded.goals,
-  assists = excluded.assists,
-  goal_involvements = excluded.goal_involvements,
-  conversion_rate_percent = excluded.conversion_rate_percent,
-  shots = excluded.shots,
-  total_attempts = excluded.total_attempts,
-  tackles = excluded.tackles,
-  corners = excluded.corners,
-  free_kicks = excluded.free_kicks,
-  throw_ins = excluded.throw_ins,
-  fouls = excluded.fouls,
-  penalty_kicks = excluded.penalty_kicks,
-  goal_kicks = excluded.goal_kicks,
-  updated_at = now();
-```
-
-Read back only the confirmed fixture's saved rows and join them to `fixture_lineups` on the complete composite identity. Verify the returned count equals the linked write count and compare every athlete slug and metric to the intended source value. Database numerics may serialize as strings; compare exact numeric values without introducing additional rounding. Report skipped unlinked rows separately and never count them as saved.
+Preview total, linked, and unresolved row counts; every identity and link; exact seconds with rounded display minutes; units; and all stored metrics. The final database write and verification procedure is in [clubatx-supabase.md](clubatx-supabase.md).

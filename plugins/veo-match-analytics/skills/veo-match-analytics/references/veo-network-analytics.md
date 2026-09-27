@@ -21,6 +21,8 @@ Endpoint names are not stable. Classify candidates from the response payload and
 
 A trusted match response must identify the current recording or match through the page slug, a stable identifier also exposed by the page, or a unique combination of title, date, and both teams. It should contain match-level fields such as the title, team identities, recording duration, date, score state, processing state, or available analytics modules. Do not treat a playback-position scoreboard as a final result.
 
+When the source exposes side-confirmation state or per-period own-side orientation, preserve it as mapping evidence. If the user reports that match sides were corrected, reload the exact analysis page, re-read that current evidence, and invalidate all previously mapped team, event, player, and division-team values. Never repair only the displayed team names while leaving metrics or event ownership on the old sides.
+
 ### Team-stat response
 
 A trusted team-stat response must:
@@ -55,7 +57,7 @@ A trusted exact playing-time response must:
 
 Physical-metrics responses may contain period rows plus an aggregate row such as `drill: "ALL"`. Treat the aggregate row as the exact match total. Never add the aggregate to its component period rows, and never multiply the rendered rounded minutes by 60. If there is no clearly identified aggregate total, keep the period rows separate and stop before a playing-time write rather than guessing how they combine.
 
-Exact seconds and rendered tracked minutes are related verification signals but different source fields. Preserve the exact response seconds for `fixture_player_playing_time`; preserve the displayed rounded minutes for `fixture_player_match_stats`.
+Exact seconds and rendered tracked minutes are related verification signals but different columns in the same consolidated row. Preserve the exact response seconds as `fixture_player_analytics.played_seconds` and the independently displayed integer minutes as `fixture_player_analytics.tracked_minutes`; never derive one from the other.
 
 ## Cross-source handling
 
