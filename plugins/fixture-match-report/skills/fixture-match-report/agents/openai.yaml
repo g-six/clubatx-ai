@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fixture Match Report"
+  short_description: "Analyze a team from a completed fixture"
+  default_prompt: "Use $fixture-match-report to analyze this completed fixture for the selected team and produce coaching priorities and video-review cues."

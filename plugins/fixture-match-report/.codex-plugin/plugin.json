@@ -1,0 +1,26 @@
+{
+  "name": "fixture-match-report",
+  "version": "0.1.0",
+  "description": "Generate evidence-backed coaching reports for a selected team from completed ClubATX fixture results and match statistics.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Fixture Match Report",
+    "shortDescription": "Turn fixture statistics into coaching insights",
+    "longDescription": "Analyze a selected team's completed fixture using the final result, opponent comparison, team statistics, and available player evidence. Produce a coaching-focused report covering strengths, improvements, key players, video-review priorities, and concrete next-match objectives without modifying league data.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Analyze this completed fixture for a chosen team",
+      "Turn these match statistics into a full coaching report",
+      "Identify evidence-backed standouts and video-review priorities"
+    ],
+    "brandColor": "#173F5F"
+  }
+}

@@ -2,7 +2,7 @@
 
 Codex plugins and reusable agent workflows for ClubATX operations.
 
-This repository is a Codex marketplace for ClubATX agent skills. It distributes plugins for importing confirmed Veo analytics and securely recording completed fixture results.
+This repository is a Codex marketplace for ClubATX agent skills. It distributes plugins for importing confirmed Veo analytics, securely recording completed fixture results, and turning completed-match statistics into coaching reports.
 
 ## Included plugins
 
@@ -41,6 +41,16 @@ The workflow explicitly detects partial imports. Saved analytics or imported eve
 - cut every moment into a separate local MP4 partial with FFmpeg; and
 - resume safely and verify every output with FFprobe.
 
+### Fixture Match Report
+
+`fixture-match-report` can:
+
+- analyze one chosen team from a completed fixture result and saved team statistics;
+- compare the team with its opponent and calculate useful attacking, territorial, and defensive indicators;
+- explain what went well and rank the most important improvements;
+- identify standout players only when player-level evidence supports the claim; and
+- convert statistical clues into falsifiable match-recording review tasks and next-match coaching objectives.
+
 ## Requirements
 
 - Codex CLI or the Codex experience in the ChatGPT desktop app with plugin support.
@@ -72,6 +82,12 @@ To install the player-moments downloader:
 
 ```sh
 codex plugin add veo-player-moments@clubatx-ai
+```
+
+To install the match-report workflow:
+
+```sh
+codex plugin add fixture-match-report@clubatx-ai
 ```
 
 Then start a new Codex task so the installed skill is loaded. In the ChatGPT desktop app, you can also open the Plugins Directory, select the **ClubATX AI** marketplace, and install any of these plugins.
@@ -122,6 +138,11 @@ It does not use analytics events to infer athlete identity, and it does not modi
     ├── enter-fixture-result/
     │   ├── .codex-plugin/plugin.json
     │   └── skills/enter-fixture-result/
+    │       ├── SKILL.md
+    │       └── agents/openai.yaml
+    ├── fixture-match-report/
+    │   ├── .codex-plugin/plugin.json
+    │   └── skills/fixture-match-report/
     │       ├── SKILL.md
     │       └── agents/openai.yaml
     ├── veo-match-analytics/
