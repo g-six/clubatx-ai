@@ -29,7 +29,7 @@ The link pair must either both be supplied or both be null. A jersey match alone
 
 ## Source-field mapping
 
-Copy values only from a verified per-player source. Do not calculate player metrics from team totals or `key_events`.
+Copy values only from a verified per-player source, except for the explicit `dribbles` projection rule below. Do not calculate player metrics from team totals or directly from arbitrary `key_events` aggregates.
 
 | Veo meaning | Database field | Rule |
 | --- | --- | --- |
@@ -57,11 +57,22 @@ Copy values only from a verified per-player source. Do not calculate player metr
 | passes | `passes` | Copy only from a verified player source; otherwise null. |
 | completed passes | `completed_passes` | Copy only from a verified player source; otherwise null. |
 | pass success | `pass_success_rate_percent` | Store a verified displayed 0-through-100 percentage; otherwise null. |
-| dribbles | `dribbles` | Copy only from a verified player source; otherwise null. |
+| dribbles | `dribbles` | Use the complete, uniquely attributable `fixture_events` dribble projection as described below; otherwise preserve a verified player-source value or null. |
 | interceptions | `interceptions` | Copy only from a verified player source; otherwise null. |
 | saves | `saves` | Copy only from a verified player source; otherwise null. |
 
 Missing nullable source fields remain null. Never use zero as a missing-value placeholder. If a field required by the verified rendered player table is missing or non-numeric for only some rows, disclose the limitation and stop that player-data import rather than creating inconsistent rows.
+
+### Derive dribbles from the relational projection
+
+Treat `dribbles` as the sole event-derived player metric. When the supported-event projection is complete for a canonical fixture side and every projected row with `event_type = 'dribble'` and `recipient_role = 'player'` maps uniquely to one consolidated player row:
+
+1. Count those projected dribble rows by confirmed `(division_team_id, jersey_number)` identity while building the projection. For a correction from already persisted `fixture_events`, use the confirmed `athlete_slug`, or an exact canonical recipient identity for an unresolved player only when the mapping is unambiguous.
+2. Set `fixture_player_analytics.dribbles` to that count for every consolidated player row on the side, including `0` when the complete projection contains no dribble for that player.
+3. Require the sum of the player-row values to equal the number of player-attributed projected dribbles for that side before writing and again after readback.
+4. Exclude team-only and unattributed dribbles. Do not add a player-table value to the projection count; if both sources provide values, preserve the projection count and disclose any mismatch.
+
+If the projection is incomplete or any player-attributed dribble cannot be assigned uniquely, do not derive dribbles for that side. Preserve verified player-source values when available; otherwise leave them null and disclose why. Never extend this exception to passes, tackles, goals, interceptions, or another player metric.
 
 ## Resolve the athlete link
 
@@ -83,6 +94,7 @@ Validate before preview:
 - jersey, whole-second, minute, and count fields are non-negative integers within database bounds;
 - decimal fields are finite, non-negative, and use no more than two decimal places;
 - both link fields are null or both exactly match the confirmed lineup row;
-- no metric was recalculated from team analytics or the event feed.
+- no metric other than `dribbles` was recalculated from team analytics or the event feed;
+- when dribbles use the relational projection, every player-attributed dribble maps uniquely and the per-player sum equals the projected side total.
 
 Preview total, linked, and unresolved row counts; every identity and link; exact seconds with rounded display minutes; units; and all stored metrics. The final database write and verification procedure is in [clubatx-supabase.md](clubatx-supabase.md).

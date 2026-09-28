@@ -1,6 +1,6 @@
 {
   "name": "veo-match-analytics",
-  "version": "0.1.0+codex.20260927175549",
+  "version": "0.1.0+codex.20260928050639",
   "description": "Extract verified Veo analytics and exact event markers, then save confirmed fixture, player, and raw-video event data to Supabase.",
   "author": {
     "name": "Local developer"
