@@ -1,0 +1,4 @@
+interface:
+  display_name: "Veo Player Moments"
+  short_description: "Download Veo player moments as MP4 clips"
+  default_prompt: "Use $veo-player-moments to download every player moment from this Veo URL as a separate MP4 clip."

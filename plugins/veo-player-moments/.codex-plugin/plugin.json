@@ -1,0 +1,28 @@
+{
+  "name": "veo-player-moments",
+  "version": "0.1.0",
+  "description": "Extract a player's detected Veo moments from a match URL and download each moment as a separate MP4 partial.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Veo Player Moments",
+    "shortDescription": "Download Veo player moments as MP4 clips",
+    "longDescription": "Open an authenticated Veo Player Moments URL, verify the selected jersey and rendered moment list, identify the page-observed source MP4, create a reviewed manifest, and cut every detected moment into a separate local MP4 file with FFmpeg.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://www.veo.co/",
+    "defaultPrompt": [
+      "Download every moment from this Veo Player Moments URL",
+      "Save this player's Veo moments as separate MP4 clips",
+      "Re-run a Veo player-moments manifest and verify all clips"
+    ],
+    "brandColor": "#1BC47D"
+  }
+}

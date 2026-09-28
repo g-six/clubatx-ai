@@ -31,6 +31,16 @@ The workflow explicitly detects partial imports. Saved analytics or imported eve
 - require explicit approval before saving; and
 - use the OAuth-protected fixture-result MCP endpoint remotely or the credential-backed local runner as a fallback.
 
+### Veo Player Moments
+
+`veo-player-moments` can:
+
+- open an authenticated Veo Player Moments URL and verify the selected jersey;
+- extract the exact rendered moment list and page-observed standard MP4 source;
+- save a reproducible `moments.json` manifest;
+- cut every moment into a separate local MP4 partial with FFmpeg; and
+- resume safely and verify every output with FFprobe.
+
 ## Requirements
 
 - Codex CLI or the Codex experience in the ChatGPT desktop app with plugin support.
@@ -58,7 +68,13 @@ To install the fixture-result workflow instead:
 codex plugin add enter-fixture-result@clubatx-ai
 ```
 
-Then start a new Codex task so the installed skill is loaded. In the ChatGPT desktop app, you can also open the Plugins Directory, select the **ClubATX AI** marketplace, and install either plugin.
+To install the player-moments downloader:
+
+```sh
+codex plugin add veo-player-moments@clubatx-ai
+```
+
+Then start a new Codex task so the installed skill is loaded. In the ChatGPT desktop app, you can also open the Plugins Directory, select the **ClubATX AI** marketplace, and install any of these plugins.
 
 To receive repository updates later:
 
@@ -108,12 +124,18 @@ It does not use analytics events to infer athlete identity, and it does not modi
     │   └── skills/enter-fixture-result/
     │       ├── SKILL.md
     │       └── agents/openai.yaml
-    └── veo-match-analytics/
+    ├── veo-match-analytics/
         ├── .codex-plugin/plugin.json
         └── skills/veo-match-analytics/
             ├── SKILL.md
             ├── agents/openai.yaml
             └── references/
+    └── veo-player-moments/
+        ├── .codex-plugin/plugin.json
+        └── skills/veo-player-moments/
+            ├── SKILL.md
+            ├── agents/openai.yaml
+            └── scripts/cut_moments.py
 ```
 
 The marketplace manifest is in `.agents/plugins/marketplace.json`; plugin source is kept under `plugins/`.
