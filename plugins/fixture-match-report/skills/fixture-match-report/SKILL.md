@@ -32,6 +32,8 @@ Calculate useful derived values when their denominators are known and nonzero. L
 
 Do not call completed passes a pass-completion rate when attempted passes are unavailable. Do not equate possession with control, momentum with chance quality, total attempts with shots on target, saves with goals prevented, or event counts with successful actions unless the schema explicitly says so. Treat ratios built from small counts as fragile and say so.
 
+When team aggregates, projected events, and player totals come from different source scopes, do not force them to reconcile. Use the canonical team statistics for team comparisons, player analytics for individual claims, and attributed events for moments and video links. Disclose meaningful discrepancies that affect a conclusion.
+
 Build conclusions by triangulating the score with several related measures:
 
 - For strengths, explain which phase succeeded, cite the selected team's figures and the opponent comparison, and connect the evidence to a plausible on-field pattern.
@@ -44,6 +46,7 @@ Build conclusions by triangulating the score with several related measures:
 Name a standout only when player-level evidence supports the claim. Strong evidence includes attributed goals or assists, shot and chance involvement, passing contribution, defensive actions, saves, physical output, and verified playing time. Explain what made each player stand out with exact figures or confirmed events and, when possible, role context.
 
 - Prefer two independent signals for a strong standout claim.
+- Treat source-generated player attribution and automated event detection as evidence to verify on video, especially when a player link is absent or totals disagree across sources.
 - Account for playing time when comparing totals. Do not reward a larger total solely because a player played longer.
 - Separate positive standouts from influential players whose errors or disciplinary events merit review.
 - Do not rank players from lineup membership alone or assign team-level statistics to individuals.
