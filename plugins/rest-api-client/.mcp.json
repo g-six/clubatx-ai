@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "rest_api_client": {
+      "command": "./scripts/start-mcp.sh",
+      "args": [],
+      "cwd": ".",
+      "enabled": true,
+      "env_vars": [
+        "REST_API_BASE_URL",
+        "REST_API_KEY",
+        "PATH"
+      ],
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 45,
+      "default_tools_approval_mode": "prompt",
+      "tools": {
+        "get_competition_red_card_stats": {
+          "approval_mode": "approve"
+        },
+        "get_competition_yellow_card_stats": {
+          "approval_mode": "approve"
+        },
+        "get_competition_goal_stats": {
+          "approval_mode": "approve"
+        },
+        "list_soccer_matches": {
+          "approval_mode": "approve"
+        },
+        "submit_request": {
+          "approval_mode": "prompt"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "rest-api-client",
+  "version": "0.1.0+codex.20261001230747",
+  "description": "Send API_KEY-authenticated requests to the Analyticom soccer API without exposing its secret.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "REST API Client",
+    "shortDescription": "Query Analyticom soccer data securely",
+    "longDescription": "Send HTTP requests to the Analyticom soccer API. The local MCP server reproduces the required BC Soccer request headers, injects API_KEY from the environment, and never exposes the credential to the model.",
+    "developerName": "Local developer",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Load this competition's matches into the agent",
+      "Summarize the latest soccer match results",
+      "Analyze matches for this organization"
+    ],
+    "brandColor": "#2563EB"
+  },
+  "mcpServers": "./.mcp.json"
+}
