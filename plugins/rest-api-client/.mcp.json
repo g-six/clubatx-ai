@@ -14,6 +14,15 @@
       "tool_timeout_sec": 45,
       "default_tools_approval_mode": "prompt",
       "tools": {
+        "get_player_picture": {
+          "approval_mode": "approve"
+        },
+        "get_player": {
+          "approval_mode": "approve"
+        },
+        "get_match_lineups": {
+          "approval_mode": "approve"
+        },
         "get_competition_red_card_stats": {
           "approval_mode": "approve"
         },

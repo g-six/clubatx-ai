@@ -28,6 +28,46 @@ The default API base URL is `https://api-latam.analyticom.de/api/live/CSA_BCS/`.
 
 Requests cannot switch to another origin or escape the configured base path, redirects are returned without being followed, and response bodies are limited to 1 MiB.
 
+## Player information
+
+`get_player` calls:
+
+```text
+GET /player/{player_id}
+    ?organizationIdFilter={organization_id_filter}
+```
+
+Example arguments:
+
+```json
+{
+  "player_id": 8408855,
+  "organization_id_filter": 168094
+}
+```
+
+The endpoint returns the player information available to the configured organization. Protected or hidden profile fields must be treated as unavailable rather than inferred.
+
+## Player pictures
+
+`get_player_picture` uses the `picture` value from a `get_player` response and calls:
+
+```text
+GET /images/{picture}
+    ?organizationIdFilter={organization_id_filter}
+```
+
+Example arguments:
+
+```json
+{
+  "picture": "63efcb80-fc51-4d50-b9d9-9be68fee4d72",
+  "organization_id_filter": 168094
+}
+```
+
+The tool reads the authenticated binary response and returns it as MCP image content. JPEG, PNG, GIF, and WebP signatures are recognized if the API does not provide a specific image content type. Image responses are limited to 5 MiB.
+
 ## List soccer matches
 
 `list_soccer_matches` calls:
@@ -94,9 +134,29 @@ GET /competition/{competition_id}/stats/redCards
 
 It accepts the same competition and organization arguments. The response is a ranked array of `player`, red-card count in `value`, and `team`.
 
+## Match lineups
+
+`get_match_lineups` calls:
+
+```text
+GET /match/{match_id}/lineups
+    ?organizationIdFilter={organization_id_filter}
+```
+
+Example arguments:
+
+```json
+{
+  "match_id": 400204631,
+  "organization_id_filter": 168094
+}
+```
+
+The response body contains `home` and `away`. Each side contains player and official arrays. Player fields identify starters, substitutes, captains, shirt numbers, optional positions and formation positions, protected profiles, and any embedded match events returned by the endpoint.
+
 ## Project agent usage
 
-The bundled `soccer-match-feed` skill teaches an agent in a project to call the match, goal-statistics, yellow-card-statistics, and red-card-statistics tools; interpret their distinct meanings; handle pagination, postponed matches, and protected player profiles correctly; and use those records directly in its analysis context. The API key remains in the MCP server environment and is never included in the agent prompt.
+The bundled `soccer-match-feed` skill teaches an agent in a project to call the player, player-picture, match-list, lineup, goal-statistics, yellow-card-statistics, and red-card-statistics tools; interpret their distinct meanings; handle binary player images, pagination, team sides, starters, substitutes, postponed matches, and protected profiles correctly; and use those records directly in its analysis context. The API key remains in the MCP server environment and is never included in the agent prompt.
 
 Enable this plugin for the project, start a new task so the skill and MCP tool load, then ask the agent to list, summarize, filter, or analyze matches. Provide the competition and organization IDs when they are not already present in project context.
 

@@ -2,11 +2,13 @@
 
 import process from "node:process";
 import readline from "node:readline";
+import { Buffer } from "node:buffer";
 
 const SERVER_NAME = "rest-api-client";
 const SERVER_VERSION = "0.1.0";
 const DEFAULT_BASE_URL = "https://api-latam.analyticom.de/api/live/CSA_BCS/";
 const MAX_RESPONSE_BYTES = 1024 * 1024;
+const MAX_IMAGE_RESPONSE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
@@ -89,8 +91,8 @@ function buildUrl(baseUrl, path, query) {
   return url;
 }
 
-async function readLimitedBody(response) {
-  if (!response.body) return "";
+async function readLimitedBytes(response, maximumBytes = MAX_RESPONSE_BYTES) {
+  if (!response.body) return new Uint8Array();
 
   const reader = response.body.getReader();
   const chunks = [];
@@ -100,9 +102,9 @@ async function readLimitedBody(response) {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_RESPONSE_BYTES) {
+    if (total > maximumBytes) {
       await reader.cancel();
-      throw new Error(`Response exceeded the ${MAX_RESPONSE_BYTES}-byte limit.`);
+      throw new Error(`Response exceeded the ${maximumBytes}-byte limit.`);
     }
     chunks.push(value);
   }
@@ -113,7 +115,38 @@ async function readLimitedBody(response) {
     combined.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new TextDecoder().decode(combined);
+  return combined;
+}
+
+async function readLimitedBody(response) {
+  return new TextDecoder().decode(await readLimitedBytes(response));
+}
+
+function detectImageMimeType(bytes, contentType) {
+  const normalizedContentType = contentType.split(";", 1)[0].trim().toLowerCase();
+  if (normalizedContentType.startsWith("image/")) return normalizedContentType;
+
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 8
+    && bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+    && bytes[4] === 0x0d
+    && bytes[5] === 0x0a
+    && bytes[6] === 0x1a
+    && bytes[7] === 0x0a
+  ) {
+    return "image/png";
+  }
+
+  const signature = new TextDecoder("ascii").decode(bytes.subarray(0, 12));
+  if (signature.startsWith("GIF87a") || signature.startsWith("GIF89a")) return "image/gif";
+  if (signature.startsWith("RIFF") && signature.slice(8, 12) === "WEBP") return "image/webp";
+  return null;
 }
 
 async function performRequest({ method, path, query, body }) {
@@ -273,7 +306,180 @@ async function getCompetitionRedCardStats(args) {
   });
 }
 
+async function getMatchLineups(args) {
+  const matchId = args?.match_id;
+  const organizationId = args?.organization_id_filter;
+
+  for (const [name, value] of Object.entries({
+    match_id: matchId,
+    organization_id_filter: organizationId,
+  })) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new Error(`${name} must be a positive integer.`);
+    }
+  }
+
+  return performRequest({
+    method: "GET",
+    path: `/match/${matchId}/lineups`,
+    query: { organizationIdFilter: organizationId },
+  });
+}
+
+async function getPlayer(args) {
+  const playerId = args?.player_id;
+  const organizationId = args?.organization_id_filter;
+
+  for (const [name, value] of Object.entries({
+    player_id: playerId,
+    organization_id_filter: organizationId,
+  })) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new Error(`${name} must be a positive integer.`);
+    }
+  }
+
+  return performRequest({
+    method: "GET",
+    path: `/player/${playerId}`,
+    query: { organizationIdFilter: organizationId },
+  });
+}
+
+async function getPlayerPicture(args) {
+  const picture = args?.picture;
+  const organizationId = args?.organization_id_filter;
+
+  if (typeof picture !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(picture)) {
+    throw new Error("picture must be a non-empty image identifier containing only letters, numbers, dots, underscores, or hyphens.");
+  }
+  if (!Number.isSafeInteger(organizationId) || organizationId <= 0) {
+    throw new Error("organization_id_filter must be a positive integer.");
+  }
+
+  const { baseUrl, apiKey } = getConfiguration();
+  const url = buildUrl(baseUrl, `/images/${encodeURIComponent(picture)}`, {
+    organizationIdFilter: organizationId,
+  });
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Host: url.host,
+      Accept: "image/*",
+      Connection: "keep-alive",
+      "User-Agent": "BC%20Soccer/8 CFNetwork/3896.100.1.2.1 Darwin/27.0.0",
+      "Accept-Language": "en",
+      API_KEY: apiKey,
+      Cookie: "SRVNAME=d21",
+    },
+    redirect: "manual",
+    signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+  });
+  const bytes = await readLimitedBytes(response, MAX_IMAGE_RESPONSE_BYTES);
+  const contentType = response.headers.get("content-type") ?? "";
+  const metadata = {
+    request: { method: "GET", url: url.href },
+    response: {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: contentType || null,
+      byteLength: bytes.byteLength,
+    },
+  };
+
+  if (!response.ok) {
+    return {
+      content: [{
+        type: "text",
+        text: `${JSON.stringify(metadata, null, 2)}\n\n${new TextDecoder().decode(bytes)}`,
+      }],
+      isError: true,
+    };
+  }
+
+  const mimeType = detectImageMimeType(bytes, contentType);
+  if (!mimeType) {
+    return toolError(`The image endpoint returned unsupported content type: ${contentType || "unknown"}.`);
+  }
+
+  return {
+    content: [
+      { type: "text", text: JSON.stringify(metadata, null, 2) },
+      { type: "image", data: Buffer.from(bytes).toString("base64"), mimeType },
+    ],
+    isError: false,
+  };
+}
+
 const tools = [
+  {
+    name: "get_player_picture",
+    description:
+      "Get an Analyticom player picture using the picture identifier returned by get_player.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        picture: {
+          type: "string",
+          minLength: 1,
+          maxLength: 128,
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          description: "Picture identifier from the player's picture field, for example 63efcb80-fc51-4d50-b9d9-9be68fee4d72.",
+        },
+        organization_id_filter: {
+          type: "integer",
+          minimum: 1,
+          description: "Analyticom organization ID used by organizationIdFilter, for example 168094.",
+        },
+      },
+      required: ["picture", "organization_id_filter"],
+    },
+  },
+  {
+    name: "get_player",
+    description:
+      "Get Analyticom player information for one player ID and organization.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        player_id: {
+          type: "integer",
+          minimum: 1,
+          description: "Analyticom player ID, for example 8408855.",
+        },
+        organization_id_filter: {
+          type: "integer",
+          minimum: 1,
+          description: "Analyticom organization ID used by organizationIdFilter, for example 168094.",
+        },
+      },
+      required: ["player_id", "organization_id_filter"],
+    },
+  },
+  {
+    name: "get_match_lineups",
+    description:
+      "Get the Analyticom home and away lineups for one match, including players, starters, substitutes, captains, officials, and embedded player events.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        match_id: {
+          type: "integer",
+          minimum: 1,
+          description: "Analyticom match ID, for example 400204631.",
+        },
+        organization_id_filter: {
+          type: "integer",
+          minimum: 1,
+          description: "Analyticom organization ID used by organizationIdFilter, for example 168094.",
+        },
+      },
+      required: ["match_id", "organization_id_filter"],
+    },
+  },
   {
     name: "get_competition_red_card_stats",
     description:
@@ -438,6 +644,15 @@ async function handle(message) {
       return success(message.id, { tools });
     case "tools/call": {
       try {
+        if (message.params?.name === "get_player_picture") {
+          return success(message.id, await getPlayerPicture(message.params.arguments ?? {}));
+        }
+        if (message.params?.name === "get_player") {
+          return success(message.id, await getPlayer(message.params.arguments ?? {}));
+        }
+        if (message.params?.name === "get_match_lineups") {
+          return success(message.id, await getMatchLineups(message.params.arguments ?? {}));
+        }
         if (message.params?.name === "get_competition_red_card_stats") {
           return success(message.id, await getCompetitionRedCardStats(message.params.arguments ?? {}));
         }
