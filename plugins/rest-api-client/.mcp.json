@@ -35,6 +35,9 @@
         "list_soccer_matches": {
           "approval_mode": "approve"
         },
+        "list_future_soccer_matches": {
+          "approval_mode": "approve"
+        },
         "submit_request": {
           "approval_mode": "prompt"
         }

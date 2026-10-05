@@ -1,6 +1,6 @@
 {
   "name": "rest-api-client",
-  "version": "0.1.0+codex.20261001235422",
+  "version": "0.1.0+codex.20261002023106",
   "description": "Send API_KEY-authenticated requests to the Analyticom soccer API without exposing its secret.",
   "author": {
     "name": "Local developer"

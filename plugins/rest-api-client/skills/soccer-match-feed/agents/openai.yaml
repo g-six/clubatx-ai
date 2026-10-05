@@ -1,4 +1,4 @@
 interface:
   display_name: "Soccer Match Feed"
-  short_description: "Load Analyticom match results into agent context"
-  default_prompt: "Use $soccer-match-feed to fetch and analyze matches for this competition and organization."
+  short_description: "Load Analyticom matches and future fixtures"
+  default_prompt: "Use $soccer-match-feed to fetch and analyze matches or future fixtures for this competition and organization."

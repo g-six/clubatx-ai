@@ -66,7 +66,7 @@ Example arguments:
 }
 ```
 
-The tool reads the authenticated binary response and returns it as MCP image content. JPEG, PNG, GIF, and WebP signatures are recognized if the API does not provide a specific image content type. Image responses are limited to 5 MiB.
+The API returns JSON containing `contentType`, `pictureLink`, and a base64-encoded image in `value`. The tool decodes that value and returns it as MCP image content. It also accepts a direct binary image response for compatibility. JPEG, PNG, GIF, and WebP signatures are recognized, and responses are limited to 5 MiB.
 
 ## List soccer matches
 
@@ -91,6 +91,19 @@ Example arguments:
 ```
 
 The endpoint returns a paginated object containing `result` match records and the total `size`.
+
+## List future soccer fixtures
+
+`list_future_soccer_matches` calls:
+
+```text
+GET /competition/{competition_id}/matches/paginated/future/7
+    ?organizationIdFilter={organization_id_filter}
+    &page={page}
+    &pageSize={page_size}
+```
+
+It accepts the same competition, organization, and pagination arguments as `list_soccer_matches`. The endpoint returns future scheduled fixtures in a paginated object containing `result` and total `size` fields.
 
 ## Competition goal statistics
 
@@ -156,7 +169,7 @@ The response body contains `home` and `away`. Each side contains player and offi
 
 ## Project agent usage
 
-The bundled `soccer-match-feed` skill teaches an agent in a project to call the player, player-picture, match-list, lineup, goal-statistics, yellow-card-statistics, and red-card-statistics tools; interpret their distinct meanings; handle binary player images, pagination, team sides, starters, substitutes, postponed matches, and protected profiles correctly; and use those records directly in its analysis context. The API key remains in the MCP server environment and is never included in the agent prompt.
+The bundled `soccer-match-feed` skill teaches an agent in a project to call the player, player-picture, past-match, future-fixture, lineup, goal-statistics, yellow-card-statistics, and red-card-statistics tools; interpret their distinct meanings; handle binary player images, pagination, team sides, starters, substitutes, postponed matches, and protected profiles correctly; and use those records directly in its analysis context. The API key remains in the MCP server environment and is never included in the agent prompt.
 
 Enable this plugin for the project, start a new task so the skill and MCP tool load, then ask the agent to list, summarize, filter, or analyze matches. Provide the competition and organization IDs when they are not already present in project context.
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Veo Basketball Review"
+  short_description: "Timestamped coaching analysis of Veo games"
+  default_prompt: "Use $veo-basketball-review to assess this Veo basketball game for my team at medium depth."

@@ -124,8 +124,6 @@ async function readLimitedBody(response) {
 
 function detectImageMimeType(bytes, contentType) {
   const normalizedContentType = contentType.split(";", 1)[0].trim().toLowerCase();
-  if (normalizedContentType.startsWith("image/")) return normalizedContentType;
-
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return "image/jpeg";
   }
@@ -146,6 +144,7 @@ function detectImageMimeType(bytes, contentType) {
   const signature = new TextDecoder("ascii").decode(bytes.subarray(0, 12));
   if (signature.startsWith("GIF87a") || signature.startsWith("GIF89a")) return "image/gif";
   if (signature.startsWith("RIFF") && signature.slice(8, 12) === "WEBP") return "image/webp";
+  if (normalizedContentType.startsWith("image/")) return normalizedContentType;
   return null;
 }
 
@@ -238,6 +237,35 @@ async function listSoccerMatches(args) {
   return performRequest({
     method: "GET",
     path: `/competition/${competitionId}/matches/paginated/past/-7`,
+    query: {
+      organizationIdFilter: organizationId,
+      page,
+      pageSize,
+    },
+  });
+}
+
+async function listFutureSoccerMatches(args) {
+  const competitionId = args?.competition_id;
+  const organizationId = args?.organization_id_filter;
+  const page = args?.page ?? 1;
+  const pageSize = args?.page_size ?? 10;
+
+  for (const [name, value] of Object.entries({
+    competition_id: competitionId,
+    organization_id_filter: organizationId,
+    page,
+    page_size: pageSize,
+  })) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new Error(`${name} must be a positive integer.`);
+    }
+  }
+  if (pageSize > 100) throw new Error("page_size must be at most 100.");
+
+  return performRequest({
+    method: "GET",
+    path: `/competition/${competitionId}/matches/paginated/future/7`,
     query: {
       organizationIdFilter: organizationId,
       page,
@@ -365,7 +393,7 @@ async function getPlayerPicture(args) {
     method: "GET",
     headers: {
       Host: url.host,
-      Accept: "image/*",
+      Accept: "*/*",
       Connection: "keep-alive",
       "User-Agent": "BC%20Soccer/8 CFNetwork/3896.100.1.2.1 Darwin/27.0.0",
       "Accept-Language": "en",
@@ -376,13 +404,13 @@ async function getPlayerPicture(args) {
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
   const bytes = await readLimitedBytes(response, MAX_IMAGE_RESPONSE_BYTES);
-  const contentType = response.headers.get("content-type") ?? "";
+  const responseContentType = response.headers.get("content-type") ?? "";
   const metadata = {
     request: { method: "GET", url: url.href },
     response: {
       status: response.status,
       statusText: response.statusText,
-      contentType: contentType || null,
+      contentType: responseContentType || null,
       byteLength: bytes.byteLength,
     },
   };
@@ -397,15 +425,43 @@ async function getPlayerPicture(args) {
     };
   }
 
-  const mimeType = detectImageMimeType(bytes, contentType);
+  let imageBytes = bytes;
+  let declaredImageType = responseContentType;
+  if (responseContentType.toLowerCase().includes("application/json")) {
+    let imageEnvelope;
+    try {
+      imageEnvelope = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      return toolError("The image endpoint returned malformed JSON.");
+    }
+
+    if (
+      !imageEnvelope
+      || typeof imageEnvelope !== "object"
+      || typeof imageEnvelope.value !== "string"
+      || typeof imageEnvelope.contentType !== "string"
+    ) {
+      return toolError("The image endpoint response did not contain contentType and base64 value fields.");
+    }
+
+    declaredImageType = imageEnvelope.contentType;
+    imageBytes = Buffer.from(imageEnvelope.value.replace(/\s/g, ""), "base64");
+    metadata.response.pictureLink = typeof imageEnvelope.pictureLink === "string"
+      ? imageEnvelope.pictureLink
+      : null;
+    metadata.response.imageContentType = declaredImageType;
+    metadata.response.imageByteLength = imageBytes.byteLength;
+  }
+
+  const mimeType = detectImageMimeType(imageBytes, declaredImageType);
   if (!mimeType) {
-    return toolError(`The image endpoint returned unsupported content type: ${contentType || "unknown"}.`);
+    return toolError(`The image endpoint returned unsupported image content type: ${declaredImageType || "unknown"}.`);
   }
 
   return {
     content: [
       { type: "text", text: JSON.stringify(metadata, null, 2) },
-      { type: "image", data: Buffer.from(bytes).toString("base64"), mimeType },
+      { type: "image", data: Buffer.from(imageBytes).toString("base64"), mimeType },
     ],
     isError: false,
   };
@@ -582,6 +638,41 @@ const tools = [
     },
   },
   {
+    name: "list_future_soccer_matches",
+    description:
+      "List future scheduled soccer fixtures for an Analyticom competition and organization. Returns the API's paginated result and size fields.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        competition_id: {
+          type: "integer",
+          minimum: 1,
+          description: "Analyticom competition ID, for example 400185941.",
+        },
+        organization_id_filter: {
+          type: "integer",
+          minimum: 1,
+          description: "Analyticom organization ID used by organizationIdFilter, for example 168094.",
+        },
+        page: {
+          type: "integer",
+          minimum: 1,
+          default: 1,
+          description: "One-based result page.",
+        },
+        page_size: {
+          type: "integer",
+          minimum: 1,
+          maximum: 100,
+          default: 10,
+          description: "Number of fixtures to return per page.",
+        },
+      },
+      required: ["competition_id", "organization_id_filter"],
+    },
+  },
+  {
     name: "submit_request",
     description:
       "Submit an approved request to a path under the configured REST API. The server adds the API_KEY header securely.",
@@ -664,6 +755,9 @@ async function handle(message) {
         }
         if (message.params?.name === "list_soccer_matches") {
           return success(message.id, await listSoccerMatches(message.params.arguments ?? {}));
+        }
+        if (message.params?.name === "list_future_soccer_matches") {
+          return success(message.id, await listFutureSoccerMatches(message.params.arguments ?? {}));
         }
         if (message.params?.name === "submit_request") {
           return success(message.id, await submitRequest(message.params.arguments ?? {}));
