@@ -1,0 +1,4 @@
+interface:
+  display_name: "Veo Player Clips"
+  short_description: "Clip one Veo player in three sports"
+  default_prompt: "Use $veo-player-clips to create verified clips for a soccer, basketball, or futsal player identified by team color and jersey number."
