@@ -1,0 +1,104 @@
+{
+  "manifest": "/Users/grey/Desktop/codes/clubatx-ai/veo-player-clips/elevate-black-1-video/output/player-clips.json",
+  "source_video": "/Users/grey/Downloads/video.mp4",
+  "sport": "basketball",
+  "mode": "precise",
+  "expected": 3,
+  "created": 3,
+  "skipped_verified": 0,
+  "failed": [],
+  "clips": [
+    {
+      "index": 1,
+      "file": "clip-001-left-wing-direct-defensive-contest.mp4",
+      "status": "created",
+      "event_type": "off_ball",
+      "semantic_outcome": null,
+      "player_actions": [
+        {
+          "type": "direct_contest",
+          "source_seconds": 1007.2,
+          "identity_verification_seconds": [
+            1006.4,
+            1007.2
+          ]
+        }
+      ],
+      "zoom": 1.0,
+      "verified_duration_seconds": 5.806
+    },
+    {
+      "index": 2,
+      "file": "clip-002-transition-dribble-and-advance-pass.mp4",
+      "status": "created",
+      "event_type": "regular",
+      "semantic_outcome": null,
+      "player_actions": [
+        {
+          "type": "receive",
+          "source_seconds": 1168.5,
+          "identity_verification_seconds": [
+            1168.6,
+            1169.2
+          ]
+        },
+        {
+          "type": "dribble",
+          "source_seconds": 1169.6,
+          "identity_verification_seconds": [
+            1169.2,
+            1170.0
+          ]
+        },
+        {
+          "type": "pass",
+          "source_seconds": 1170.8,
+          "identity_verification_seconds": [
+            1170.0
+          ]
+        }
+      ],
+      "zoom": 1.0,
+      "verified_duration_seconds": 5.305
+    },
+    {
+      "index": 3,
+      "file": "clip-003-right-wing-drive-and-missed-layup.mp4",
+      "status": "created",
+      "event_type": "regular",
+      "semantic_outcome": null,
+      "player_actions": [
+        {
+          "type": "receive",
+          "source_seconds": 2749.7,
+          "identity_verification_seconds": [
+            2749.6,
+            2750.2
+          ]
+        },
+        {
+          "type": "dribble",
+          "source_seconds": 2752.0,
+          "identity_verification_seconds": [
+            2751.0,
+            2752.0,
+            2753.0
+          ]
+        },
+        {
+          "type": "shot",
+          "source_seconds": 2754.45,
+          "identity_verification_seconds": [
+            2753.0,
+            2754.0
+          ]
+        }
+      ],
+      "zoom": 1.0,
+      "verified_duration_seconds": 7.774
+    }
+  ],
+  "compilation": null,
+  "verified": 3,
+  "total_verified_duration_seconds": 18.885
+}

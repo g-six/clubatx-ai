@@ -45,7 +45,9 @@ Use these default boundaries unless the user explicitly requests different timin
 - `basketball_score`: start exactly 2 seconds before the shot release; end exactly 2 seconds after release. This is intentionally shorter than the soccer/futsal goal window.
 - `off_ball`: only when requested by scope; start 2 seconds before the verified action begins and end 1 second after it ends.
 
-Clamp boundaries to the recording start/end. Record the underlying receive, release, execution, or action timestamps in the manifest; do not merely approximate a start and end. If consecutive touch windows overlap, merge them into one continuous clip and preserve all underlying event timestamps.
+When the same continuous sequence leads to a verified positive outcome, extend the clip end through the moment the outcome is achieved plus 1.5 seconds. Never shorten the normal sport-specific window: use the later of the default end or `positive_outcome.achieved_seconds + 1.5`. A positive outcome must be a concrete visible result directly produced by or flowing from the player's action, such as a made basket or goal, a teammate converting the player's pass, or a defensive action immediately yielding controlled possession. A promising attack, unconverted chance, unrelated later score, whistle, reaction, or inferred result does not qualify. Inspect through the terminal result before deciding whether the extension applies.
+
+Clamp boundaries to the recording start/end. Record the underlying receive, release, execution, action, and positive-outcome timestamps in the manifest; do not merely approximate a start and end. If consecutive touch windows overlap, merge them into one continuous clip and preserve all underlying event timestamps.
 
 ## Scoring outcome verification
 
@@ -56,7 +58,7 @@ Before using `goal` or `basketball_score`:
 - inspect the action continuously from execution through the outcome;
 - for basketball, visibly confirm the ball passes through the hoop. A release, apparent shot, rim/backboard contact, air ball, blocked shot, rebound, whistle, or ball going out of bounds is not by itself a made basket;
 - for soccer or futsal, visibly confirm the whole ball crosses the goal line between the posts and under the crossbar, or corroborate an obscured crossing with an unmistakable official goal signal and scoring restart;
-- record the timestamp where the scoring outcome becomes visible as `outcome_verification_seconds`;
+- record the timestamp where the scoring outcome becomes visible as `outcome_verification_seconds` and as `positive_outcome.achieved_seconds`;
 - set `scoring_outcome` to `made_basket` for basketball or `goal` for soccer/futsal.
 
 If the outcome cannot be confirmed, classify the action accurately as a regular attempt, miss, block, save, rebound, turnover, or out-of-bounds sequence. Never infer a score from trajectory, player reaction, clip timing, filename, or a synthetic test manifest.
@@ -67,7 +69,7 @@ For every basketball shot, resolve the complete rim sequence before labeling it:
 2. Use sufficiently dense frames to preserve every bounce; use the source frame rate or at least 30 fps around rim contact when lower-density sheets do not show the path unambiguously. Keep the frames in chronological order.
 3. Confirm a make only when the ball can be followed into the cylinder and then below the rim through the net. Confirm a miss only when the ball clearly leaves the cylinder area without passing through and is then rebounded, goes out, or otherwise continues away from the hoop.
 4. Inspect the wider view through the immediate restart as corroboration. An opponent collecting the ball under the basket may be an inbound after a make or a rebound after a miss, so possession alone is not decisive; the ball path through or away from the net controls the label.
-5. If the terminal outcome occurs after the requested output boundary, inspect beyond that boundary for classification, then keep the rendered clip on the applicable timing policy. If the path still cannot be resolved, use an outcome-neutral regular-shot label rather than `basketball_score` or `miss`.
+5. If the terminal outcome occurs after the default output boundary, inspect beyond that boundary for classification and extend a positive-result clip through the achieved outcome plus 1.5 seconds. If the path still cannot be resolved, use an outcome-neutral regular-shot label rather than `basketball_score` or `miss`.
 
 For a verified `basketball_score`, record `outcome_evidence` in the manifest with at least one timestamped `ball_below_rim_after_net` observation. Add intermediate observations such as `rim_contact`, `backboard_contact`, or `rim_roll` when present so a multi-bounce make remains auditable.
 
@@ -181,10 +183,15 @@ Create `player-clips.json` before cutting. Use this shape:
       "receive_seconds": 120.2,
       "release_seconds": 127.4,
       "start_seconds": 118.2,
-      "end_seconds": 128.4,
-      "label": "transition drive",
+      "end_seconds": 131.7,
+      "label": "transition pass leading to teammate score",
       "confidence": "verified",
       "verification_seconds": [120.2, 127.4],
+      "positive_outcome": {
+        "type": "teammate_made_basket",
+        "achieved_seconds": 130.2,
+        "verification_seconds": [130.2]
+      },
       "player_actions": [
         {
           "type": "receive",
@@ -192,7 +199,7 @@ Create `player-clips.json` before cutting. Use this shape:
           "identity_verification_seconds": [120.2]
         },
         {
-          "type": "shot",
+          "type": "pass",
           "source_seconds": 127.4,
           "identity_verification_seconds": [127.4]
         }
@@ -202,7 +209,7 @@ Create `player-clips.json` before cutting. Use this shape:
         "track_points": [
           {"source_seconds": 118.2, "x": 0.31, "y": 0.56},
           {"source_seconds": 123.4, "x": 0.47, "y": 0.52},
-          {"source_seconds": 128.4, "x": 0.68, "y": 0.48}
+          {"source_seconds": 131.7, "x": 0.68, "y": 0.48}
         ]
       }
     }
@@ -210,7 +217,7 @@ Create `player-clips.json` before cutting. Use this shape:
 }
 ```
 
-`source_video` may instead be the verified HTTPS `c.veocdn.com` standard MP4 URL. Clip indexes must be consecutive; intervals must be ordered, positive, non-overlapping, and within the source duration. `verification_seconds`, `player_actions`, and framing track points must fall inside the interval. Use `execution_seconds` for `goal` and `basketball_score`; use `action_start_seconds` and `action_end_seconds` for `off_ball`. For an unzoomed clip, set `framing.zoom` to `1.0` and omit `track_points`.
+`source_video` may instead be the verified HTTPS `c.veocdn.com` standard MP4 URL. Clip indexes must be consecutive; intervals must be ordered, positive, non-overlapping, and within the source duration. `verification_seconds`, `player_actions`, positive-outcome verification timestamps, and framing track points must fall inside the interval. Use `execution_seconds` for `goal` and `basketball_score`; use `action_start_seconds` and `action_end_seconds` for `off_ball`. `positive_outcome` is optional for non-scoring events and required for verified scoring events. Its `type` must name the concrete result, `achieved_seconds` must be at or after the player's action ends, and `verification_seconds` must include that achieved moment. For an unzoomed clip, set `framing.zoom` to `1.0` and omit `track_points`.
 
 Every scoring entry additionally requires:
 
@@ -220,6 +227,11 @@ Every scoring entry additionally requires:
   "execution_seconds": 140.0,
   "scoring_outcome": "made_basket",
   "outcome_verification_seconds": [140.8],
+  "positive_outcome": {
+    "type": "made_basket",
+    "achieved_seconds": 140.8,
+    "verification_seconds": [140.8]
+  },
   "outcome_evidence": [
     {"source_seconds": 140.3, "observation": "rim_contact"},
     {"source_seconds": 140.8, "observation": "ball_below_rim_after_net"}
@@ -227,7 +239,7 @@ Every scoring entry additionally requires:
 }
 ```
 
-Use `scoring_outcome: "goal"` for soccer or futsal. Evidence timestamps must be at or after execution and inside the clip. `outcome_evidence` is required for `basketball_score`; it is optional for soccer or futsal goals.
+Use `scoring_outcome: "goal"` and `positive_outcome.type: "goal"` for soccer or futsal. Evidence timestamps must be at or after execution and inside the clip. `outcome_evidence` is required for `basketball_score`; it is optional for soccer or futsal goals. The scoring verification timestamp and positive-outcome achieved timestamp must identify the same visible result.
 
 Run the bundled cutter:
 

@@ -1,0 +1,104 @@
+{
+  "source_video": "/Users/grey/Downloads/video.mp4",
+  "source_duration_seconds": 3552.048433,
+  "match_title": "Elevate U14 basketball - local recording",
+  "sport": "basketball",
+  "player": {
+    "team": "Elevate",
+    "jersey_color": "black",
+    "jersey_number": 1
+  },
+  "scope": "ball-involvements",
+  "clips": [
+    {
+      "index": 1,
+      "event_type": "off_ball",
+      "action_start_seconds": 1006.2,
+      "action_end_seconds": 1009.0,
+      "start_seconds": 1004.2,
+      "end_seconds": 1010.0,
+      "label": "left-wing direct defensive contest",
+      "confidence": "verified",
+      "verification_seconds": [1006.4, 1007.2, 1009.0],
+      "player_actions": [
+        {
+          "type": "direct_contest",
+          "source_seconds": 1007.2,
+          "identity_verification_seconds": [1006.4, 1007.2]
+        }
+      ],
+      "framing": {
+        "zoom": 1.0
+      }
+    },
+    {
+      "index": 2,
+      "event_type": "regular",
+      "receive_seconds": 1168.5,
+      "release_seconds": 1170.8,
+      "start_seconds": 1166.5,
+      "end_seconds": 1171.8,
+      "label": "transition dribble and advance pass",
+      "confidence": "verified",
+      "verification_seconds": [1168.6, 1169.2, 1170.0],
+      "player_actions": [
+        {
+          "type": "receive",
+          "source_seconds": 1168.5,
+          "identity_verification_seconds": [1168.6, 1169.2]
+        },
+        {
+          "type": "dribble",
+          "source_seconds": 1169.6,
+          "identity_verification_seconds": [1169.2, 1170.0]
+        },
+        {
+          "type": "pass",
+          "source_seconds": 1170.8,
+          "identity_verification_seconds": [1170.0]
+        }
+      ],
+      "framing": {
+        "zoom": 1.0
+      }
+    },
+    {
+      "index": 3,
+      "event_type": "basketball_score",
+      "execution_seconds": 2754.45,
+      "start_seconds": 2752.45,
+      "end_seconds": 2756.45,
+      "label": "right-wing drive and made layup",
+      "scoring_outcome": "made_basket",
+      "outcome_verification_seconds": [2755.75],
+      "outcome_evidence": [
+        {"source_seconds": 2754.9, "observation": "rim_contact"},
+        {"source_seconds": 2755.2, "observation": "rim_roll"},
+        {"source_seconds": 2755.75, "observation": "ball_below_rim_after_net"},
+        {"source_seconds": 2756.2, "observation": "opponent_collects_for_inbound"}
+      ],
+      "confidence": "verified",
+      "verification_seconds": [2753.0, 2754.0, 2754.45, 2755.75],
+      "player_actions": [
+        {
+          "type": "dribble",
+          "source_seconds": 2753.0,
+          "identity_verification_seconds": [2753.0]
+        },
+        {
+          "type": "shot",
+          "source_seconds": 2754.45,
+          "identity_verification_seconds": [2753.0, 2754.0]
+        },
+        {
+          "type": "score",
+          "source_seconds": 2755.75,
+          "identity_verification_seconds": [2754.0]
+        }
+      ],
+      "framing": {
+        "zoom": 1.0
+      }
+    }
+  ]
+}

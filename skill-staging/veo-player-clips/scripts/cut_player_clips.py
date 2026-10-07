@@ -124,7 +124,42 @@ def load_manifest(path: Path) -> dict:
         if not valid_number(action_start) or not valid_number(action_end) or action_end < action_start:
             fail(f"clip {expected} has invalid action timestamps for {event_type}")
         expected_start = max(float(action_start) - lead, 0.0)
-        expected_end = min(float(action_end) + tail, float(duration))
+        default_end = float(action_end) + tail
+        positive_outcome = clip.get("positive_outcome")
+        if event_type in {"goal", "basketball_score"} and positive_outcome is None:
+            fail(f"clip {expected} scoring events require positive_outcome")
+        if positive_outcome is not None:
+            if not isinstance(positive_outcome, dict):
+                fail(f"clip {expected} positive_outcome must be an object")
+            positive_type = positive_outcome.get("type")
+            achieved = positive_outcome.get("achieved_seconds")
+            positive_verification = positive_outcome.get("verification_seconds")
+            if not isinstance(positive_type, str) or not positive_type.strip():
+                fail(f"clip {expected} positive_outcome requires a concrete type")
+            if not valid_number(achieved) or achieved < action_end or achieved > duration:
+                fail(f"clip {expected} positive_outcome has invalid achieved_seconds")
+            if not isinstance(positive_verification, list) or not positive_verification:
+                fail(f"clip {expected} positive_outcome requires verification_seconds")
+            if any(not valid_number(t) or t < action_end or t > duration for t in positive_verification):
+                fail(f"clip {expected} positive_outcome has invalid verification_seconds")
+            if not any(abs(float(t) - float(achieved)) <= 0.051 for t in positive_verification):
+                fail(f"clip {expected} positive_outcome verification must include achieved_seconds")
+            if event_type in {"goal", "basketball_score"}:
+                if positive_type != clip.get("scoring_outcome"):
+                    fail(f"clip {expected} positive_outcome type must match scoring_outcome")
+                if not any(abs(float(t) - float(achieved)) <= 0.051
+                           for t in clip["outcome_verification_seconds"]):
+                    fail(f"clip {expected} scoring verification must match positive_outcome achieved_seconds")
+                if event_type == "basketball_score" and not any(
+                        item["observation"] == "ball_below_rim_after_net"
+                        and abs(float(item["source_seconds"]) - float(achieved)) <= 0.051
+                        for item in clip["outcome_evidence"]):
+                    fail(f"clip {expected} made-basket achieved_seconds must match ball_below_rim_after_net evidence")
+            default_end = max(default_end, float(achieved) + 1.5)
+        expected_end = min(default_end, float(duration))
+        if positive_outcome is not None and any(
+                float(t) > expected_end for t in positive_outcome["verification_seconds"]):
+            fail(f"clip {expected} positive_outcome verification falls outside its extended interval")
         if abs(float(start) - expected_start) > 0.051 or abs(float(end) - expected_end) > 0.051:
             fail(f"clip {expected} boundaries do not match the {event_type} timing policy")
         if clip.get("confidence") not in {"verified", "tracked"}:
@@ -327,6 +362,7 @@ def main() -> int:
         report["clips"].append({"index": clip["index"], "file": destination.name, "status": status,
                                 "event_type": clip["event_type"],
                                 "semantic_outcome": clip.get("scoring_outcome"),
+                                "positive_outcome": clip.get("positive_outcome"),
                                 "outcome_evidence": clip.get("outcome_evidence"),
                                 "player_actions": clip["player_actions"],
                                 "zoom": float(clip.get("framing", {}).get("zoom", 1.0)),
