@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import NoReturn
+from typing import NoReturn, Optional
 from urllib.parse import urlparse
 
 
@@ -77,6 +77,56 @@ def load_manifest(path: Path) -> dict:
             fail(f"clip {expected} overlaps the preceding clip")
         if end > duration:
             fail(f"clip {expected} exceeds source_duration_seconds")
+        event_type = clip.get("event_type")
+        if event_type not in {"regular", "goal", "basketball_score", "off_ball"}:
+            fail(f"clip {expected} has an invalid event_type")
+        if event_type == "goal" and sport not in {"soccer", "futsal"}:
+            fail(f"clip {expected} goal is only valid for soccer or futsal")
+        if event_type == "basketball_score" and sport != "basketball":
+            fail(f"clip {expected} basketball_score requires basketball")
+
+        if event_type in {"goal", "basketball_score"}:
+            required_outcome = "goal" if event_type == "goal" else "made_basket"
+            if clip.get("scoring_outcome") != required_outcome:
+                fail(f"clip {expected} scoring_outcome must be {required_outcome}")
+            outcome_times = clip.get("outcome_verification_seconds")
+            execution = clip.get("execution_seconds")
+            if not isinstance(outcome_times, list) or not outcome_times:
+                fail(f"clip {expected} requires outcome_verification_seconds")
+            if not valid_number(execution) or any(not valid_number(t) or t < execution or t > end for t in outcome_times):
+                fail(f"clip {expected} has invalid outcome_verification_seconds")
+            if event_type == "basketball_score":
+                evidence = clip.get("outcome_evidence")
+                if not isinstance(evidence, list) or not evidence:
+                    fail(f"clip {expected} basketball_score requires outcome_evidence")
+                allowed_observations = {
+                    "rim_contact", "backboard_contact", "rim_roll", "ball_below_rim_after_net",
+                    "opponent_collects_for_inbound",
+                }
+                for evidence_index, item in enumerate(evidence, 1):
+                    if not isinstance(item, dict) or item.get("observation") not in allowed_observations:
+                        fail(f"clip {expected} outcome evidence {evidence_index} has an invalid observation")
+                    evidence_time = item.get("source_seconds")
+                    if not valid_number(evidence_time) or evidence_time < execution or evidence_time > end:
+                        fail(f"clip {expected} outcome evidence {evidence_index} has an invalid source_seconds")
+                if not any(item["observation"] == "ball_below_rim_after_net" for item in evidence):
+                    fail(f"clip {expected} basketball_score requires ball_below_rim_after_net evidence")
+        elif any(key in clip for key in ("scoring_outcome", "outcome_verification_seconds", "outcome_evidence")):
+            fail(f"clip {expected} has scoring evidence but is not a scoring event")
+
+        if event_type == "regular":
+            action_start, action_end, lead, tail = clip.get("receive_seconds"), clip.get("release_seconds"), 2.0, 1.0
+        elif event_type in {"goal", "basketball_score"}:
+            action_start = action_end = clip.get("execution_seconds")
+            lead, tail = 2.0, 3.0 if event_type == "goal" else 2.0
+        else:
+            action_start, action_end, lead, tail = clip.get("action_start_seconds"), clip.get("action_end_seconds"), 2.0, 1.0
+        if not valid_number(action_start) or not valid_number(action_end) or action_end < action_start:
+            fail(f"clip {expected} has invalid action timestamps for {event_type}")
+        expected_start = max(float(action_start) - lead, 0.0)
+        expected_end = min(float(action_end) + tail, float(duration))
+        if abs(float(start) - expected_start) > 0.051 or abs(float(end) - expected_end) > 0.051:
+            fail(f"clip {expected} boundaries do not match the {event_type} timing policy")
         if clip.get("confidence") not in {"verified", "tracked"}:
             fail(f"clip {expected} confidence must be verified or tracked")
         verification = clip.get("verification_seconds")
@@ -84,6 +134,56 @@ def load_manifest(path: Path) -> dict:
             fail(f"clip {expected} requires verification_seconds")
         if any(not valid_number(t) or t < start or t > end for t in verification):
             fail(f"clip {expected} has verification_seconds outside its interval")
+
+        actions = clip.get("player_actions")
+        if not isinstance(actions, list) or not actions:
+            fail(f"clip {expected} requires player_actions")
+        ball_actions = {
+            "receive", "control", "pass", "carry", "dribble", "shot", "score", "goal", "turnover",
+            "rebound", "loose_ball", "steal", "interception", "tackle", "save", "block", "deflection",
+            "out_of_bounds_touch", "direct_contest",
+        }
+        off_ball_actions = {"screen", "cut", "closeout", "press", "mark", "recovery_run"}
+        allowed_actions = ball_actions | off_ball_actions
+        for action_index, action in enumerate(actions, 1):
+            if not isinstance(action, dict) or action.get("type") not in allowed_actions:
+                fail(f"clip {expected} player action {action_index} has an invalid type")
+            action_time = action.get("source_seconds")
+            identity_times = action.get("identity_verification_seconds")
+            if not valid_number(action_time) or action_time < start or action_time > end:
+                fail(f"clip {expected} player action {action_index} has an invalid source_seconds")
+            if not isinstance(identity_times, list) or not identity_times:
+                fail(f"clip {expected} player action {action_index} requires identity_verification_seconds")
+            if any(not valid_number(t) or t < start or t > end or abs(t - action_time) > 2.0 for t in identity_times):
+                fail(f"clip {expected} player action {action_index} has invalid identity evidence")
+        if payload.get("scope") == "ball-involvements" and any(action["type"] not in ball_actions for action in actions):
+            fail(f"clip {expected} contains off-ball actions outside ball-involvements scope")
+        action_types = {action["type"] for action in actions}
+        if event_type == "basketball_score" and "score" not in action_types:
+            fail(f"clip {expected} basketball_score requires a score player action")
+        if event_type == "goal" and "goal" not in action_types:
+            fail(f"clip {expected} goal requires a goal player action")
+
+        framing = clip.get("framing", {"zoom": 1.0})
+        if not isinstance(framing, dict) or framing.get("zoom") not in {1, 1.0, 1.5}:
+            fail(f"clip {expected} framing.zoom must be 1.0 or 1.5")
+        points = framing.get("track_points", [])
+        if framing.get("zoom") == 1.5:
+            if not isinstance(points, list) or not points:
+                fail(f"clip {expected} zoom 1.5 requires track_points")
+            previous_point_time = -1.0
+            for point in points:
+                if not isinstance(point, dict):
+                    fail(f"clip {expected} has an invalid track point")
+                point_time, x, y = point.get("source_seconds"), point.get("x"), point.get("y")
+                if (not valid_number(point_time) or point_time < start or point_time > end
+                        or not valid_number(x) or not 0 <= x <= 1
+                        or not valid_number(y) or not 0 <= y <= 1
+                        or point_time <= previous_point_time):
+                    fail(f"clip {expected} has invalid or unordered track_points")
+                previous_point_time = float(point_time)
+        elif points:
+            fail(f"clip {expected} track_points require zoom 1.5")
         prior_end = float(end)
     return payload
 
@@ -110,6 +210,39 @@ def clip_name(clip: dict) -> str:
     return f"clip-{clip['index']:03d}-{slug(clip.get('label', 'play'))}.mp4"
 
 
+def interpolation_expression(points: list[dict], axis: str, clip_start: float) -> str:
+    values = [(float(point["source_seconds"]) - clip_start, float(point[axis])) for point in points]
+    if len(values) == 1:
+        return f"{values[0][1]:.8f}"
+    expression = f"{values[-1][1]:.8f}"
+    for index in range(len(values) - 2, -1, -1):
+        t0, v0 = values[index]
+        t1, v1 = values[index + 1]
+        slope = (v1 - v0) / (t1 - t0)
+        segment = f"({v0:.8f}+({slope:.10f})*(t-{t0:.6f}))"
+        expression = f"if(lt(t,{t0:.6f}),{v0:.8f},if(lt(t,{t1:.6f}),{segment},{expression}))"
+    return expression
+
+
+def framing_filter(clip: dict) -> Optional[str]:
+    framing = clip.get("framing", {"zoom": 1.0})
+    if float(framing.get("zoom", 1.0)) == 1.0:
+        return None
+    zoom = 1.5
+    clip_start = float(clip["start_seconds"])
+    x_center = interpolation_expression(framing["track_points"], "x", clip_start)
+    y_center = interpolation_expression(framing["track_points"], "y", clip_start)
+    crop_w = f"trunc(iw/{zoom}/2)*2"
+    crop_h = f"trunc(ih/{zoom}/2)*2"
+    crop_x = f"max(0,min(iw-ow,({x_center})*iw-ow/2))"
+    crop_y = f"max(0,min(ih-oh,({y_center})*ih-oh/2))"
+    return (
+        "setpts=PTS-STARTPTS,"
+        f"crop=w='{crop_w}':h='{crop_h}':x='{crop_x}':y='{crop_y}',"
+        f"scale=w='trunc(iw*{zoom}/2)*2':h='trunc(ih*{zoom}/2)*2'"
+    )
+
+
 def cut_command(ffmpeg: str, source: str, clip: dict, output: Path, mode: str) -> list[str]:
     duration = float(clip["end_seconds"]) - float(clip["start_seconds"])
     command = [
@@ -117,9 +250,12 @@ def cut_command(ffmpeg: str, source: str, clip: dict, output: Path, mode: str) -
         "-ss", f"{float(clip['start_seconds']):.3f}", "-i", source,
         "-t", f"{duration:.3f}", "-map", "0:v:0", "-map", "0:a?",
     ]
+    video_filter = framing_filter(clip)
     if mode == "copy":
         command += ["-c", "copy", "-avoid_negative_ts", "make_zero"]
     else:
+        if video_filter:
+            command += ["-vf", video_filter]
         command += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "128k"]
     return command + ["-movflags", "+faststart", "-y", str(output)]
 
@@ -139,6 +275,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     payload = load_manifest(args.manifest.resolve())
+    if args.mode == "copy" and any(framing_filter(clip) for clip in payload["clips"]):
+        fail("Zoomed clips require --mode precise")
     output_dir = args.output_dir.resolve()
     ffmpeg = shutil.which(args.ffmpeg)
     ffprobe = shutil.which(args.ffprobe)
@@ -187,6 +325,11 @@ def main() -> int:
         if verified > 0:
             verified_paths.append(destination)
         report["clips"].append({"index": clip["index"], "file": destination.name, "status": status,
+                                "event_type": clip["event_type"],
+                                "semantic_outcome": clip.get("scoring_outcome"),
+                                "outcome_evidence": clip.get("outcome_evidence"),
+                                "player_actions": clip["player_actions"],
+                                "zoom": float(clip.get("framing", {}).get("zoom", 1.0)),
                                 "verified_duration_seconds": round(verified, 3)})
         print(f"[{clip['index']:03d}/{len(payload['clips']):03d}] {status}: {destination.name}", flush=True)
 

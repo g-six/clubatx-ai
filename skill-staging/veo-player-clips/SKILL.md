@@ -23,7 +23,6 @@ Accept optional parameters:
 
 - `game_start`: Veo video-clock timestamp of live play;
 - `scope`: `all-visible`, `ball-involvements`, `offense`, `defense`, `scoring`, or a natural-language subset; default `ball-involvements`;
-- `pre_roll_seconds` and `post_roll_seconds`; default 4 and 3;
 - `output`: `individual`, `compilation`, or `both`; default `both`;
 - `mode`: `copy` for fast keyframe-aligned cuts or `precise` for re-encoded boundaries; default `precise`;
 - `depth`: `light`, `medium`, or `high`; default `medium`;
@@ -36,6 +35,41 @@ Interpret scope and action boundaries for the selected sport:
 - `futsal`: expect rapid transitions and frequent substitutions. Use tighter possession boundaries, but preserve the preceding rotation or press that creates the action.
 
 Natural-language scopes may use sport-specific concepts. Do not reinterpret a soccer shot as a basketball shot or merge distinct futsal transitions merely because they occur close together.
+
+## Clip timing
+
+Use these default boundaries unless the user explicitly requests different timing:
+
+- `regular`: start exactly 2 seconds before the player receives or gains control of the ball; end exactly 1 second after the player passes, shoots, loses, or otherwise releases the ball.
+- `goal` for soccer or futsal: start exactly 2 seconds before the scoring execution or final strike; end exactly 3 seconds after that execution so the outcome and initial celebration/reset are visible.
+- `basketball_score`: start exactly 2 seconds before the shot release; end exactly 2 seconds after release. This is intentionally shorter than the soccer/futsal goal window.
+- `off_ball`: only when requested by scope; start 2 seconds before the verified action begins and end 1 second after it ends.
+
+Clamp boundaries to the recording start/end. Record the underlying receive, release, execution, or action timestamps in the manifest; do not merely approximate a start and end. If consecutive touch windows overlap, merge them into one continuous clip and preserve all underlying event timestamps.
+
+## Scoring outcome verification
+
+Keep technical media verification separate from semantic event verification. FFmpeg success, readable duration, or a correctly timed clip proves only that the MP4 is valid; it does not prove that a goal or basket occurred.
+
+Before using `goal` or `basketball_score`:
+
+- inspect the action continuously from execution through the outcome;
+- for basketball, visibly confirm the ball passes through the hoop. A release, apparent shot, rim/backboard contact, air ball, blocked shot, rebound, whistle, or ball going out of bounds is not by itself a made basket;
+- for soccer or futsal, visibly confirm the whole ball crosses the goal line between the posts and under the crossbar, or corroborate an obscured crossing with an unmistakable official goal signal and scoring restart;
+- record the timestamp where the scoring outcome becomes visible as `outcome_verification_seconds`;
+- set `scoring_outcome` to `made_basket` for basketball or `goal` for soccer/futsal.
+
+If the outcome cannot be confirmed, classify the action accurately as a regular attempt, miss, block, save, rebound, turnover, or out-of-bounds sequence. Never infer a score from trajectory, player reaction, clip timing, filename, or a synthetic test manifest.
+
+For every basketball shot, resolve the complete rim sequence before labeling it:
+
+1. Decode a continuous close view of the hoop from shot release until the ball reaches a terminal outcome. When the ball contacts the rim or backboard, rolls around the rim, changes direction, or is briefly hidden by the rim/net, treat that as an intermediate state and continue frame by frame. Never label a miss at the first rim or backboard contact.
+2. Use sufficiently dense frames to preserve every bounce; use the source frame rate or at least 30 fps around rim contact when lower-density sheets do not show the path unambiguously. Keep the frames in chronological order.
+3. Confirm a make only when the ball can be followed into the cylinder and then below the rim through the net. Confirm a miss only when the ball clearly leaves the cylinder area without passing through and is then rebounded, goes out, or otherwise continues away from the hoop.
+4. Inspect the wider view through the immediate restart as corroboration. An opponent collecting the ball under the basket may be an inbound after a make or a rebound after a miss, so possession alone is not decisive; the ball path through or away from the net controls the label.
+5. If the terminal outcome occurs after the requested output boundary, inspect beyond that boundary for classification, then keep the rendered clip on the applicable timing policy. If the path still cannot be resolved, use an outcome-neutral regular-shot label rather than `basketball_score` or `miss`.
+
+For a verified `basketball_score`, record `outcome_evidence` in the manifest with at least one timestamped `ball_below_rim_after_net` observation. Add intermediate observations such as `rim_contact`, `backboard_contact`, or `rim_roll` when present so a multi-bounce make remains auditable.
 
 Depth controls search density, not identity standards:
 
@@ -56,6 +90,15 @@ Depth controls search density, not identity standards:
 
 Review the full playable interval at the requested depth. Contact sheets may find candidates, but never use a single sparse frame as final identity proof. Reinspect each candidate as a short chronological sequence.
 
+For `basketball` ball-involvement clips, add a second pass over high-value possessions before finalizing:
+
+- inspect every visible possession where the player is on court and near the ball handler, a pass lane, a rebound, a shot, a turnover, or a transition advantage;
+- include drives, catches, passes, rebounds, loose balls, defensive contests, and possessions that create a scoring chance even when they are brief;
+- do not rely on 10-second or similarly sparse sheets to reject a possession where the player is near the ball. Generate a denser sheet or short sequence around the candidate before excluding it;
+- when multiple same-color teammates are nearby, reacquire the jersey number after the play develops instead of dropping the candidate solely because the first frame is unclear.
+
+When the user supplies a specific timestamp, mark, or suspected missed play, treat it as a priority candidate. Review at least 20 seconds before and after that timestamp at higher temporal density, verify the player's identity and action chain, then either add it to a revised manifest or explain the exact exclusion reason.
+
 For every included interval:
 
 - confirm that the court or field and play pattern agree with the selected `sport`;
@@ -63,7 +106,8 @@ For every included interval:
 - confirm the requested jersey number within the sequence, or maintain continuous visual tracking from a nearby frame where the number is clear;
 - ensure no same-color teammate substitution, crossing, camera cut, or occlusion breaks the identity chain;
 - verify that the action matches `scope`;
-- choose boundaries that preserve the action's setup and outcome, then apply pre/post-roll without exceeding source bounds.
+- verify a concrete action by the requested player at the action timestamp, not merely the player's presence elsewhere in the frame;
+- identify the receive/release, scoring execution, or off-ball action timestamps and derive the boundaries from the timing policy.
 
 When the jersey number is unreadable after an occlusion, end the interval before identity is lost. Resume only after independently reacquiring the number. Exclude candidates with unresolved identity and list their approximate timestamps as ambiguous.
 
@@ -73,7 +117,45 @@ Use confidence labels:
 - `tracked`: number is readable immediately before or after and identity remains continuously visible;
 - never include `ambiguous` candidates.
 
+Identity confidence does not verify the event outcome. A correctly identified player can still miss, be blocked, or send the ball out of bounds.
+
+## Player-action verification
+
+Player visibility is not player involvement. Every retained clip must contain at least one timestamped `player_actions` record for the requested player, with identity evidence at the action itself.
+
+For `ball-involvements`, qualifying actions include:
+
+- receiving or controlling the ball;
+- passing, carrying, dribbling, shooting, scoring, or turning it over;
+- a rebound, loose-ball recovery, steal, interception, tackle, save, block, or deflection;
+- the player's final touch that sends the ball out of bounds;
+- a direct on-ball contest in which the player clearly pressures or challenges the ball handler.
+
+Mere visibility, proximity to the ball, ordinary spacing, standing available for a pass, being a decoy, or appearing at one verification timestamp does not qualify. An off-ball screen, cut, closeout, press, mark, or recovery run qualifies only when the requested scope includes off-ball offense or defense; it must not be presented as a ball involvement.
+
+Each action record must contain:
+
+- `type`: the specific action;
+- `source_seconds`: when it occurs;
+- `identity_verification_seconds`: one or more nearby timestamps where the requested jersey number is readable, or from which an uninterrupted identity track reaches the action.
+
+Identity evidence must be within 2 seconds of the action. If another same-color teammate crosses, receives the ball, or becomes the action's subject, reacquire the requested jersey number before recording another action. Do not carry a `tracked` identity across that ambiguity.
+
+Before finalizing, ask: “If the requested player were removed from this sequence, would the recorded action still be the same?” If yes, exclude the clip unless the verified action is an intentional off-ball action within scope.
+
 Merge overlapping or immediately adjacent intervals that describe one continuous action. Keep separate possessions as separate clips unless the user requests longer shifts.
+
+## Zoom and player-follow framing
+
+Keep the native full frame when the player is already large enough to identify and understand the play. When the player is too distant, use exactly `1.5` zoom and re-encode the clip:
+
+1. Record normalized player-center coordinates (`x` and `y` from 0 to 1) at enough source timestamps to follow the player smoothly.
+2. Include a point before major direction changes and after reacquiring the player from an occlusion.
+3. Interpolate the crop center between points so the frame pans with the player. Keep the crop inside the source frame.
+4. Prefer keeping the player near center, but shift enough to retain the ball and immediate play context when centering would hide the outcome.
+5. Do not zoom when identity is uncertain, when cropping removes essential context, or merely to make the image look more dramatic.
+
+Any zoomed clip requires `mode: precise`; stream copy cannot crop, scale, or pan. Verify first, middle, last, and direction-change frames after rendering.
 
 ## Manifest and cutting
 
@@ -92,22 +174,60 @@ Create `player-clips.json` before cutting. Use this shape:
     "jersey_number": 8
   },
   "scope": "ball-involvements",
-  "pre_roll_seconds": 4,
-  "post_roll_seconds": 3,
   "clips": [
     {
       "index": 1,
+      "event_type": "regular",
+      "receive_seconds": 120.2,
+      "release_seconds": 127.4,
       "start_seconds": 118.2,
-      "end_seconds": 132.8,
+      "end_seconds": 128.4,
       "label": "transition drive",
       "confidence": "verified",
-      "verification_seconds": [120.1, 128.4]
+      "verification_seconds": [120.2, 127.4],
+      "player_actions": [
+        {
+          "type": "receive",
+          "source_seconds": 120.2,
+          "identity_verification_seconds": [120.2]
+        },
+        {
+          "type": "shot",
+          "source_seconds": 127.4,
+          "identity_verification_seconds": [127.4]
+        }
+      ],
+      "framing": {
+        "zoom": 1.5,
+        "track_points": [
+          {"source_seconds": 118.2, "x": 0.31, "y": 0.56},
+          {"source_seconds": 123.4, "x": 0.47, "y": 0.52},
+          {"source_seconds": 128.4, "x": 0.68, "y": 0.48}
+        ]
+      }
     }
   ]
 }
 ```
 
-`source_video` may instead be the verified HTTPS `c.veocdn.com` standard MP4 URL. Clip indexes must be consecutive; intervals must be ordered, positive, non-overlapping, and within the source duration. `verification_seconds` must fall inside its interval.
+`source_video` may instead be the verified HTTPS `c.veocdn.com` standard MP4 URL. Clip indexes must be consecutive; intervals must be ordered, positive, non-overlapping, and within the source duration. `verification_seconds`, `player_actions`, and framing track points must fall inside the interval. Use `execution_seconds` for `goal` and `basketball_score`; use `action_start_seconds` and `action_end_seconds` for `off_ball`. For an unzoomed clip, set `framing.zoom` to `1.0` and omit `track_points`.
+
+Every scoring entry additionally requires:
+
+```json
+{
+  "event_type": "basketball_score",
+  "execution_seconds": 140.0,
+  "scoring_outcome": "made_basket",
+  "outcome_verification_seconds": [140.8],
+  "outcome_evidence": [
+    {"source_seconds": 140.3, "observation": "rim_contact"},
+    {"source_seconds": 140.8, "observation": "ball_below_rim_after_net"}
+  ]
+}
+```
+
+Use `scoring_outcome: "goal"` for soccer or futsal. Evidence timestamps must be at or after execution and inside the clip. `outcome_evidence` is required for `basketball_score`; it is optional for soccer or futsal goals.
 
 Run the bundled cutter:
 
@@ -125,7 +245,7 @@ Do not overwrite a different manifest or a non-empty invalid clip. The helper re
 
 ## Verification and delivery
 
-Require successful FFmpeg completion and positive FFprobe duration for every individual clip and the requested compilation. Spot-check the first, middle, and final frames of each output for player identity and action continuity; for high depth, inspect more densely when occlusion occurs.
+Require successful FFmpeg completion and positive FFprobe duration for every individual clip and the requested compilation. This is technical verification only. Separately inspect every `player_actions` timestamp plus the first, middle, final, direction-change, and scoring-outcome frames for player identity, actual involvement, action continuity, and accurate labels. Reject the clip if the action belongs to a teammate, even when the requested player is visible elsewhere in the frame.
 
 Deliver:
 
