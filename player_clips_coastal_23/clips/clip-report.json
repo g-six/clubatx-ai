@@ -1,0 +1,45 @@
+{
+  "manifest": "/Users/grey/Desktop/codes/clubatx-ai/player_clips_coastal_23/clips/player-clips.json",
+  "source_video": "/Users/grey/Downloads/clubathletix-vs-susc-2026-06-21.mp4",
+  "sport": "soccer",
+  "mode": "precise",
+  "expected": 1,
+  "created": 1,
+  "skipped_verified": 0,
+  "failed": [],
+  "clips": [
+    {
+      "index": 1,
+      "file": "clip-001-near-touchline-throw-in-restart.mp4",
+      "status": "created",
+      "event_type": "regular",
+      "semantic_outcome": null,
+      "positive_outcome": null,
+      "outcome_evidence": null,
+      "player_actions": [
+        {
+          "type": "control",
+          "source_seconds": 1682.5,
+          "identity_verification_seconds": [
+            1684.25
+          ]
+        },
+        {
+          "type": "pass",
+          "source_seconds": 1695.0,
+          "identity_verification_seconds": [
+            1694.5
+          ]
+        }
+      ],
+      "zoom": 1.0,
+      "verified_duration_seconds": 15.515
+    }
+  ],
+  "compilation": {
+    "file": "player-compilation.mp4",
+    "verified_duration_seconds": 15.537
+  },
+  "verified": 1,
+  "total_verified_duration_seconds": 15.515
+}

@@ -67,10 +67,15 @@
       "event_type": "basketball_score",
       "execution_seconds": 2754.45,
       "start_seconds": 2752.45,
-      "end_seconds": 2756.45,
+      "end_seconds": 2757.25,
       "label": "right-wing drive and made layup",
       "scoring_outcome": "made_basket",
       "outcome_verification_seconds": [2755.75],
+      "positive_outcome": {
+        "type": "made_basket",
+        "achieved_seconds": 2755.75,
+        "verification_seconds": [2755.75]
+      },
       "outcome_evidence": [
         {"source_seconds": 2754.9, "observation": "rim_contact"},
         {"source_seconds": 2755.2, "observation": "rim_roll"},

@@ -4,8 +4,8 @@
   "sport": "basketball",
   "mode": "precise",
   "expected": 3,
-  "created": 0,
-  "skipped_verified": 3,
+  "created": 1,
+  "skipped_verified": 2,
   "failed": [],
   "clips": [
     {
@@ -14,6 +14,7 @@
       "status": "skipped_verified",
       "event_type": "off_ball",
       "semantic_outcome": null,
+      "positive_outcome": null,
       "outcome_evidence": null,
       "player_actions": [
         {
@@ -34,6 +35,7 @@
       "status": "skipped_verified",
       "event_type": "regular",
       "semantic_outcome": null,
+      "positive_outcome": null,
       "outcome_evidence": null,
       "player_actions": [
         {
@@ -66,9 +68,16 @@
     {
       "index": 3,
       "file": "clip-003-right-wing-drive-and-made-layup.mp4",
-      "status": "skipped_verified",
+      "status": "created",
       "event_type": "basketball_score",
       "semantic_outcome": "made_basket",
+      "positive_outcome": {
+        "type": "made_basket",
+        "achieved_seconds": 2755.75,
+        "verification_seconds": [
+          2755.75
+        ]
+      },
       "outcome_evidence": [
         {
           "source_seconds": 2754.9,
@@ -112,10 +121,10 @@
         }
       ],
       "zoom": 1.0,
-      "verified_duration_seconds": 4.004
+      "verified_duration_seconds": 4.805
     }
   ],
   "compilation": null,
   "verified": 3,
-  "total_verified_duration_seconds": 15.115
+  "total_verified_duration_seconds": 15.916
 }

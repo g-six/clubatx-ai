@@ -1,0 +1,39 @@
+{
+  "source_video": "/Users/grey/Downloads/clubathletix-vs-susc-2026-06-21.mp4",
+  "source_duration_seconds": 4056.118667,
+  "match_title": "clubathletix-vs-susc-2026-06-21",
+  "sport": "soccer",
+  "player": {
+    "team": "Coastal FC",
+    "jersey_color": "blue",
+    "jersey_number": 39
+  },
+  "scope": "ball-involvements",
+  "review_depth": "light-to-medium visual scan from local MP4",
+  "status": "no_verified_clips_cut",
+  "reason": "The sampled review found a likely blue #39 near the near touchline around 28:00, but the available frames did not provide a continuous, unambiguous jersey-number-to-ball-action chain. Per the player-clips standard, ambiguous candidates were omitted instead of cutting the wrong player.",
+  "review_artifacts": [
+    "review/sheet_001.jpg through review/sheet_021.jpg",
+    "review/candidates/around_28_01.jpg through review/candidates/around_28_05.jpg",
+    "review/candidates/t1683_crop.jpg",
+    "review/candidates/t1686_crop.jpg"
+  ],
+  "ambiguous_candidates": [
+    {
+      "approx_seconds": 1680,
+      "clock": "00:28:00",
+      "reason": "Likely blue #39 visible near the near touchline, but the ball-involvement sequence could not be verified with jersey number evidence within two seconds of a concrete touch."
+    },
+    {
+      "approx_seconds": 890,
+      "clock": "00:14:50",
+      "reason": "Close blue player near the touchline was visible, but the front/side view did not verify jersey #39 and no qualifying ball action was established."
+    },
+    {
+      "approx_seconds": 990,
+      "clock": "00:16:30",
+      "reason": "Near-touchline blue player was clearly #22, not #39, so excluded."
+    }
+  ],
+  "created_at_utc": "2026-10-07T02:03:43Z"
+}

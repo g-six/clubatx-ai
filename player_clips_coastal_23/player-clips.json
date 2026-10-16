@@ -1,0 +1,41 @@
+{
+  "source_page_url": "local file: /Users/grey/Downloads/clubathletix-vs-susc-2026-06-21.mp4",
+  "source_video": "/Users/grey/Downloads/clubathletix-vs-susc-2026-06-21.mp4",
+  "source_duration_seconds": 4056.118667,
+  "match_title": "clubathletix-vs-susc-2026-06-21",
+  "sport": "soccer",
+  "player": {
+    "team": "Coastal FC",
+    "jersey_color": "blue",
+    "jersey_number": 23
+  },
+  "scope": "ball-involvements",
+  "clips": [
+    {
+      "index": 1,
+      "event_type": "regular",
+      "receive_seconds": 1682.5,
+      "release_seconds": 1695.0,
+      "start_seconds": 1680.5,
+      "end_seconds": 1696.0,
+      "label": "near touchline throw-in restart",
+      "confidence": "verified",
+      "verification_seconds": [1684.25, 1694.5],
+      "player_actions": [
+        {
+          "type": "control",
+          "source_seconds": 1682.5,
+          "identity_verification_seconds": [1684.25]
+        },
+        {
+          "type": "pass",
+          "source_seconds": 1695.0,
+          "identity_verification_seconds": [1694.5]
+        }
+      ],
+      "framing": {
+        "zoom": 1.0
+      }
+    }
+  ]
+}
