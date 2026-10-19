@@ -32,7 +32,9 @@ A trusted team-stat response must:
 - match the rendered `Stats` panel on both team identities and at least three available metrics, including their side assignment;
 - preserve distinctions such as shots versus total attempts, and counts versus percentages.
 
-Use the response to extract the complete team-stat dataset only after these checks pass. Use the rendered labels and units to interpret response fields. If a response value and rendered value disagree, preserve both in the audit notes, use the rendered value for persistence, and do not silently choose or average them.
+Use the verified team-stat response as the primary source for every team metric it contains. Use the rendered labels and units to interpret response fields and confirm team identity, side assignment, and metric meaning. A rendered-value disagreement does not override the response: preserve both values in the audit and persist the team-stat response value.
+
+For a metric absent from the verified team-stat response, use the corresponding value from a verified match-details response when available. Apply this fallback metric by metric; do not replace the whole team-stat dataset with match-details. If both responses contain the same metric and disagree, persist the team-stat value and record the match-details value in the audit and write preview. Do not average values or force agreement. If neither response supplies a required metric, use a clearly labeled rendered value only when the relevant analytics panel displays it; otherwise mark the field unavailable and follow the persistence schema's missing-data rules.
 
 ### Player-stat response
 
@@ -63,8 +65,8 @@ Exact seconds and rendered tracked minutes are related verification signals but 
 
 Keep match metadata, team statistics, displayed player statistics, exact playing time, and events as separate source scopes even when one response contains more than one scope. Correlate stable IDs across responses, but do not derive one dataset from another.
 
-- Prefer a verified analytics response for complete extraction when it agrees with the rendered panel.
-- Keep the rendered panel authoritative for human-facing labels, units, displayed precision, and any value that conflicts with the response.
+- For team metrics, prefer the verified team-stat response; use verified match-details only for metrics missing from that response. Preserve and report conflicts, with the team-stat response winning overlaps.
+- Keep the rendered panel authoritative for human-facing labels, units, and displayed precision. Use rendered values to interpret and cross-check sources, not to silently overwrite a verified team-stat value.
 - Never replace team or player metrics with aggregates from the event feed.
 - Preserve processing, reduced-accuracy, subscription, or missing-data warnings from either source.
 
