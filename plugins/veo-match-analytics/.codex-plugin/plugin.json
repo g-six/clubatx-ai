@@ -1,7 +1,7 @@
 {
   "name": "veo-match-analytics",
-  "version": "0.1.0+codex.20260928050639",
-  "description": "Extract verified Veo analytics and exact event markers, then save confirmed fixture, player, and raw-video event data to Supabase.",
+  "version": "0.1.1",
+  "description": "Extract and verify Veo match analytics, resolve player links from fixture lineups with default rosters as backup, and save graph-ready team metrics plus confirmed player and event data to Supabase.",
   "author": {
     "name": "Local developer"
   },
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Veo Match Analytics",
     "shortDescription": "Save Veo analytics and raw-video event links",
-    "longDescription": "Open a Veo match analysis URL in the browser, pause for sign-in when required, inspect page-observed analytics, event, and media requests, confirm the ClubATX fixture, corrected side mapping, official score, Veo-authoritative half duration, athlete links, event-link pre-roll, and destructive event replacement, then atomically persist and verify match analytics, cumulative event minutes, consolidated player statistics, exact playing-time seconds, and supported player events linked to the raw MP4 recording with a 3-second playback pre-roll by default.",
+    "longDescription": "Open a Veo match analysis URL in the browser or validate an intermediate JSON export from that exact page, pause for sign-in when required, inspect observed analytics, event, and media data, confirm the ClubATX fixture, corrected side mapping, official score, Veo-authoritative half duration, athlete links, event-link pre-roll, and destructive event replacement, then atomically persist and verify graph-ready team metrics, cumulative event minutes, consolidated player statistics, exact playing-time seconds, and supported player events linked to the raw MP4 recording with a 3-second playback pre-roll by default. Use fixture lineups first and default team rosters only as backup; unlinked jerseys are expected and should be reported neutrally.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [
