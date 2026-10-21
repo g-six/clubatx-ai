@@ -1,0 +1,4 @@
+interface:
+  display_name: "Football Match Coach"
+  short_description: "Turn match data into coaching priorities"
+  default_prompt: "Analyze this completed football match for the selected team and suggest evidence-based coaching priorities."
