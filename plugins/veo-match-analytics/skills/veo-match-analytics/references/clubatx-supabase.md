@@ -88,7 +88,7 @@ Follow [veo-network-events.md](veo-network-events.md) for raw-media verification
 
 `fixture_id`, `division_team_id`, `recipient_name`, `event_type`, `minute`, `added_time`, `recipient_role`, `athlete_slug`, and `video_url`.
 
-Use the confirmed side's division-team ID. A confirmed athlete uses the canonical database name and slug; an unlinked jersey uses `Jersey #<number>` and a null slug. Set `recipient_role` to `player`. The `video_url` must be the observed raw HTTPS `.mp4` URL with its fragment replaced by `#t=<max(exact video_time_seconds - confirmed_pre_roll_seconds, 0)>`; default to a 3-second pre-roll and never store an `app.veo.co` event route there. Do not modify the exact source `video_time_seconds` in `fixture_match_stats.payload.key_events`.
+Use the confirmed side's division-team ID. A confirmed athlete uses the canonical database name and slug; an unlinked jersey uses `Jersey #<number>` and a null slug. When jersey/player attribution is absent, empty, or null, use `recipient_name = 'Unknown player'` with both athlete-link fields null. Set `recipient_role` to `player` for ordinary events. For a team-neutral duel, use `division_team_id = null`, `recipient_name = null`, `athlete_slug = null`, and `recipient_role = 'both_teams'`; this is the only relational event allowed without a side. The `video_url` must be the observed raw HTTPS `.mp4` URL with its fragment replaced by `#t=<max(exact video_time_seconds - confirmed_pre_roll_seconds, 0)>`; default to a 3-second pre-roll and never store an `app.veo.co` event route there. Do not modify the exact source `video_time_seconds` in `fixture_match_stats.payload.key_events`.
 
 Use cumulative match minutes in both `key_events[].minute` and `fixture_events.minute`. When Veo's period clock resets, add the verified nominal duration of every completed prior period before converting seconds to the one-based minute. For a standard two-half fixture this is `floor(((period - 1) * half_duration_seconds + match_time_seconds) / 60) + 1`. Preserve exact period-local `match_time_seconds`, the period number, and explicit `added_time`; never store second-half events as minutes `1..half_duration_minutes`.
 
@@ -96,9 +96,9 @@ Read the full current fixture event set. A complete Veo import replaces it becau
 
 Validate the intended projection before preview:
 
-- every row uses the confirmed fixture and one of its two division-team IDs;
+- every ordinary player row uses the confirmed fixture and one of its two division-team IDs; only a team-neutral `duel` may use a null division-team ID and `recipient_role = 'both_teams'`;
 - `event_type` satisfies the live table constraint;
-- every recipient is non-empty and every confirmed slug exists;
+- every ordinary player recipient is either a non-empty canonical name, `Jersey #<number>`, or `Unknown player`, and every confirmed slug exists; team-neutral duels use a null recipient, slug, and team ID with `recipient_role = 'both_teams'`;
 - `minute` and `added_time` preserve the normalized source values;
 - every period-two minute is cumulative and consistent with the verified Veo half duration;
 - every `video_url` matches the single verified raw recording plus the exact numeric adjusted `#t=` fragment for the confirmed pre-roll; and
@@ -245,13 +245,13 @@ After the user confirms the final preview, use one Supabase SQL request containi
 begin;
 
 select public.save_fixture_performance(
-  <validated_match_id>,
+  <validated_match_id>::bigint,
   $veo_match$<validated_compact_match_json>$veo_match$::jsonb,
-  $veo_source$veo$veo_source$,
+  $veo_source$veo$veo_source$::text,
   $veo_players$<complete_compact_player_array>$veo_players$::jsonb,
   <confirmed_home_score>::smallint,
   <confirmed_away_score>::smallint,
-  $veo_url$<derived_full_veo_url>$veo_url$
+  $veo_url$<derived_full_veo_url>$veo_url$::text
 );
 
 update public.fixtures
@@ -287,7 +287,7 @@ from jsonb_to_recordset(
 commit;
 ```
 
-Before executing, confirm that each dollar-quote delimiter does not occur in its enclosed value. The transaction atomically:
+Before executing, confirm that each dollar-quote delimiter does not occur in its enclosed value. Keep all seven helper argument casts explicit, even when PostgreSQL could infer some types. If function resolution fails because an argument is still untyped, treat the error as pre-mutation, re-audit the fixture and existing row counts, add the missing cast, and retry the same confirmed payload. The transaction atomically:
 
 - updates only `fixtures.home_score`, `fixtures.away_score`, `fixtures.video_url`, and the verified Veo `fixtures.half_duration_minutes` value;
 - upserts the complete `fixture_match_stats.payload`;
