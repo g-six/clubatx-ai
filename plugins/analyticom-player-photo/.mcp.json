@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "analyticom_player_photo": {
+      "command": "./scripts/start-mcp.sh",
+      "args": [],
+      "env_vars": [
+        "PATH",
+        "SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "REST_API_KEY",
+        "REST_API_BASE_URL",
+        "ANALYTICOM_ORGANIZATION_ID",
+        "CLUBATX_PHOTO_ENV_FILE"
+      ],
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 180,
+      "cwd": "."
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "analyticom-player-photo",
+  "version": "0.1.0",
+  "description": "Download original Analyticom player photos using saved ClubATX player-to-athlete links.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Analyticom Player Photo",
+    "shortDescription": "Download linked player photos",
+    "longDescription": "Download the original Analyticom player photo from the saved ClubATX athlete link. Resolves the exact athlete slug through analyticom_player_links, retrieves its player picture, and saves a local image without updating athlete records. Requires local Supabase and Analyticom credentials.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Download the Analyticom photo for this linked ClubATX athlete"
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}

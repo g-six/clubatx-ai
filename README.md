@@ -6,6 +6,10 @@ This repository is a Codex marketplace for ClubATX agent skills. It distributes 
 
 ## Included plugins
 
+### Analyticom Player Photo
+
+`analyticom-player-photo` downloads an original player photo using the saved ClubATX athlete-to-Analyticom link. It resolves the exact athlete slug through `analyticom_player_links`, fetches the linked profile's picture, and saves a local image without changing athlete records. See [configuration and usage](plugins/analyticom-player-photo/README.md) for the required local Supabase and Analyticom environment variables.
+
 ### Veo Match Analytics
 
 `veo-match-analytics` can:
@@ -88,6 +92,12 @@ To install the match-report workflow:
 
 ```sh
 codex plugin add fixture-match-report@clubatx-ai
+```
+
+To install the linked player photo downloader:
+
+```sh
+codex plugin add analyticom-player-photo@clubatx-ai
 ```
 
 Then start a new Codex task so the installed skill is loaded. In the ChatGPT desktop app, you can also open the Plugins Directory, select the **ClubATX AI** marketplace, and install any of these plugins.
