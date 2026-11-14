@@ -1,0 +1,11 @@
+{
+  "name": "clubatx-headshots",
+  "version": "0.1.1",
+  "description": "Create transparent headshots and Blue Lock-inspired avatars through ClubAtx.",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "ClubAtx Headshots",
+    "shortDescription": "Create headshots and anime avatars",
+    "category": "Productivity"
+  }
+}

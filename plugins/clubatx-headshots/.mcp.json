@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "clubatx_headshots": {
+      "command": "node",
+      "args": [
+        "${PLUGIN_ROOT}/scripts/local-server.mjs"
+      ],
+      "env_vars": [
+        "PATH",
+        "CLUBATX_API_KEY",
+        "CLUBATX_HEADSHOTS_ENV_FILE"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "startup_timeout_sec": 10,
+      "tool_timeout_sec": 300
+    }
+  }
+}
