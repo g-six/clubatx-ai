@@ -1,7 +1,8 @@
 const tool = {
   name: 'create_headshot',
-  description: 'Create a transparent PNG headshot with a black shirt using ClubAtx POST /v1/images/headshot. Requests preservation of identity, face and hair, but generative editing can introduce small changes. Source must be PNG, JPEG or WebP up to 10 MB in the configured Vercel Blob store. Supplying athlete_slug REPLACES that athlete profile photo: only include it when the user requested a profile update. Without athlete_slug only a new file is saved. Do not retry automatically: generation creates a new file and incurs processing. On 409/500 preserve returned PNG metadata and explain whether the profile update was unconfirmed.',
+  description: 'Create a transparent PNG headshot with a black shirt using ClubAtx POST /v1/images/headshot. Optionally pass render_as="bluelock" to re-render the final headshot as a Blue Lock-inspired anime avatar. Requests preservation of identity, face and hair, but generative editing can introduce small changes. Source must be PNG, JPEG or WebP up to 10 MB in the configured Vercel Blob store. Supplying athlete_slug REPLACES that athlete profile photo: only include it when the user requested a profile update. Without athlete_slug only a new file is saved. Do not retry automatically: generation creates a new file and incurs processing. On 409/500 preserve returned PNG metadata and explain whether the profile update was unconfirmed.',
   inputSchema: { type: 'object', properties: {
+    render_as: {type:'string', enum:['bluelock'], description:'Optional: re-render the final headshot as a Blue Lock-inspired anime avatar. Omit for the standard headshot.'},
     source_url: {type:'string', maxLength:2048, description:'Direct HTTPS image URL in the configured Vercel Blob store, no query or fragment.'},
     athlete_slug: {type:'string', maxLength:100, pattern:'^[a-z0-9]+(?:-[a-z0-9]+)*$', description:'Athlete profile to update. If source_url omitted, uses current photo.'}
   }, anyOf:[{required:['source_url']},{required:['athlete_slug']}], additionalProperties:false },
@@ -24,7 +25,8 @@ export default {async fetch(request,env) {
  if(rpc.params?.name==='headshot_connection_status')return reply(content({configured:!!env.CLUBATX_API_KEY,endpoint:'https://api.clubathletix.com/v1/images/headshot'}));
  if(rpc.params?.name!=='create_headshot')return reply(content({error:'Unknown tool'},true));
  const a=rpc.params.arguments??{};
- if(!a||typeof a!=='object'||Array.isArray(a)||Object.keys(a).some(k=>!['source_url','athlete_slug'].includes(k))||(!a.source_url&&!a.athlete_slug))return reply(content({error:'Supply source_url or athlete_slug'},true));
+ if(!a||typeof a!=='object'||Array.isArray(a)||Object.keys(a).some(k=>!['source_url','athlete_slug','render_as'].includes(k))||(!a.source_url&&!a.athlete_slug))return reply(content({error:'Supply source_url or athlete_slug'},true));
+ if(a.render_as!==undefined&&a.render_as!=='bluelock')return reply(content({error:'Invalid render_as: expected bluelock'},true));
  if(a.athlete_slug!==undefined&&(typeof a.athlete_slug!=='string'||a.athlete_slug.length>100||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(a.athlete_slug)))return reply(content({error:'Invalid athlete_slug'},true));
  if(a.source_url!==undefined){try{const u=new URL(a.source_url);if(typeof a.source_url!=='string'||a.source_url.length>2048||u.protocol!=='https:'||! /^[a-z0-9]+\.(public|private)\.blob\.vercel-storage\.com$/.test(u.hostname)||u.search||u.hash||u.port||u.username||u.password)throw Error()}catch{return reply(content({error:'Invalid direct HTTPS Vercel Blob source_url'},true))}}
  if(!env.CLUBATX_API_KEY)return reply(content({error:'Configure the private CLUBATX_API_KEY runtime secret with a read_write ClubAtx API key.'},true));

@@ -19,3 +19,15 @@ then publish the matching pushed source archive.
 Profile photo replacement occurs only with `athlete_slug`. Generation is not
 idempotent; never automatically retry an uncertain request. Preserve generated
 PNG metadata on 409/500 and report the profile update state accurately.
+
+Optional anime avatar rendering: pass `"render_as": "bluelock"` with
+`source_url` or `athlete_slug` to ask the API to re-render the final headshot
+as a Blue Lock-inspired anime avatar. Omit `render_as` for the standard
+headshot. Other values are rejected before calling the API.
+
+```json
+{
+  "source_url": "https://YOUR-STORE.public.blob.vercel-storage.com/photo.jpg",
+  "render_as": "bluelock"
+}
+```
