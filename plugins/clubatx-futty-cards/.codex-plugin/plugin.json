@@ -17,7 +17,7 @@
     "shortDescription": "Card styles from team crests"
   },
   "name": "clubatx-futty-cards",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Generate crest-based futty football card style templates through the ClubATX MCP server.",
   "author": {
     "name": "Rey",

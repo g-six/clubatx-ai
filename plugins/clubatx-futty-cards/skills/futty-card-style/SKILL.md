@@ -6,10 +6,10 @@ description: Generate a reusable futty football player card style from a ClubATX
 # ClubAtx Futty Cards
 
 Use the connected ClubATX MCP tool `generate_futty_card_style`. The server is
-`https://api.clubathletix.com/mcp`; its OAuth connection requires a ClubATX
-administrator for generation. Use the host's normal connection and passkey
-sign-in flow. Do not ask for, read, extract, print, or package provider secrets,
-bearer tokens, browser cookies, or database credentials.
+`https://api.clubathletix.com/mcp/futty-cards`; its OAuth connection requires a
+ClubATX administrator for generation. Use the host's normal connection and
+passkey sign-in flow. Do not ask for, read, extract, print, or package provider
+secrets, bearer tokens, browser cookies, or database credentials.
 
 ## Check availability
 

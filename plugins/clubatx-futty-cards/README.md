@@ -71,7 +71,9 @@ The output has blank areas for player details; it is not a completed athlete car
 
 ## Connection and source layout
 
-- Remote MCP: `https://api.clubathletix.com/mcp`, Streamable HTTP.
+- Remote MCP: `https://api.clubathletix.com/mcp/futty-cards`, Streamable HTTP.
+  This dedicated alias keeps Futty Cards tool discovery independent from the
+  shared commentary connection while using the same authenticated handler.
 - Authentication: existing OAuth discovery, dynamic client registration, PKCE,
   and ClubATX passkey sign-in; generation is administrator-only.
 - The server currently advertises `fixtures:read fixtures:write events:write` as
