@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClubAtx Futty Cards"
+  short_description: "Card styles from team crests"
+  default_prompt: "Use $futty-card-style to generate a reusable football card template from my team or organization crest."

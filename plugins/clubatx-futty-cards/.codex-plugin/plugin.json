@@ -1,0 +1,35 @@
+{
+  "requires_local_executor": false,
+  "interface": {
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "category": "Creativity",
+    "defaultPrompt": [
+      "Generate a futty card style using my team crest.",
+      "Create a metallic card template from my organization crest.",
+      "Check whether the ClubATX futty card generation tool is available."
+    ],
+    "developerName": "Rey",
+    "displayName": "ClubAtx Futty Cards",
+    "longDescription": "Generate reusable football player card style PNGs from a saved ClubATX team or organization crest, or a crest image in the configured Blob store. Uses the existing ClubATX MCP endpoint and administrator OAuth sign-in. Returns a new card template with blank player and statistics areas without replacing the original crest.",
+    "shortDescription": "Card styles from team crests"
+  },
+  "name": "clubatx-futty-cards",
+  "version": "0.1.2",
+  "description": "Generate crest-based futty football card style templates through the ClubATX MCP server.",
+  "author": {
+    "name": "Rey",
+    "email": "gerard@nerubia.com"
+  },
+  "keywords": [
+    "clubatx",
+    "football",
+    "futty",
+    "cards",
+    "crest"
+  ],
+  "skills": "./skills",
+  "mcpServers": "./.mcp.json"
+}

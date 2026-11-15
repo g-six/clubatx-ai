@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "clubatx_futty_cards": {
+      "type": "streamable-http",
+      "url": "https://api.clubathletix.com/mcp",
+      "headers": {}
+    }
+  }
+}
