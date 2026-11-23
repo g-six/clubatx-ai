@@ -33,7 +33,7 @@ Follow response-provided pagination only through requests naturally triggered in
 
 ## Resolve the raw recording URL
 
-When `fixture_events` persistence is in scope, capture the URL actually loaded by the match player's `video.currentSrc` or child `source.src`, or the matching page-observed media request. Do not guess a CDN path, derive it from the match UUID, use the `Download` control, or download the video.
+When fixture Match Video or `fixture_events` persistence is in scope, capture the URL actually loaded by the match player's `video.currentSrc` or child `source.src`, or the matching page-observed media request. Do not guess a CDN path, derive it from the match UUID, use the `Download` control, or download the video.
 
 Accept the recording URL only when all of these checks pass:
 
@@ -42,7 +42,7 @@ Accept the recording URL only when all of these checks pass:
 - the loaded video duration agrees with the trusted match duration within normal encoding tolerance; and
 - when multiple media URLs exist, it is the `currentSrc` of the standard match player rather than a thumbnail, alternate camera, or unrelated clip.
 
-Preserve the full observed URL, including its host, path, case, and query string. Keep the exact finite non-negative source `video_time_seconds`, including fractional seconds, in the normalized event. For playback links, default `pre_roll_seconds` to `3` and replace the raw URL's fragment with `#t=<max(video_time_seconds - pre_roll_seconds, 0)>`. Use a different pre-roll only after the user explicitly confirms it. Do not use the rounded match minute. The result must still be a raw `.mp4` URL, not an `app.veo.co` route.
+Preserve the full observed URL, including its host, path, case, and query string. Save this raw recording without a fragment as the fixture Match Video URL, following [match-video-link.md](match-video-link.md). Event links use the same base MP4 with the timestamp fragment described below. Keep the exact finite non-negative source `video_time_seconds`, including fractional seconds, in the normalized event. For playback links, default `pre_roll_seconds` to `3` and replace the raw URL's fragment with `#t=<max(video_time_seconds - pre_roll_seconds, 0)>`. Use a different pre-roll only after the user explicitly confirms it. Do not use the rounded match minute. The result must still be a raw `.mp4` URL, not an `app.veo.co` route.
 
 Before the database preview, open one representative event link in a temporary browser tab. Require the browser's native video player to load the same `currentSrc` and seek to the adjusted marker (allowing current time to advance during playback), then close the temporary tab. Record both the exact source time and adjusted marker in the preview. If no trustworthy raw source or exact video marker is available, stop the relational event write instead of substituting the fixture-level Veo URL.
 

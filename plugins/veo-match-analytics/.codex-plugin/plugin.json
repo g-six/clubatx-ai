@@ -1,6 +1,6 @@
 {
   "name": "veo-match-analytics",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Capture complete Veo statistics, AI reports, shot maps, passing networks, player data, and timed events; resolve confirmed player names and verify atomic ClubATX imports.",
   "author": {
     "name": "Local developer"
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Veo Match Analytics",
     "shortDescription": "Save verified Veo analytics",
-    "longDescription": "Capture every available match-report module and all individual attributes, preserve all five Veo AI sections and bullet points with confirmed player names, retain verified shot markers and passing connections with more than three completed passes, and save complete team statistics and play-by-play. Verify fixture sides, score, athlete mappings and timing; show one complete preview; then atomically persist and read back the approved data. Completeness and preservation checks prevent silent omissions, and actual fixture-page checks verify supported report and replay displays. Original AI wording and unresolved jerseys remain auditable.",
+    "longDescription": "Capture every available match-report module and all individual attributes, preserve all five Veo AI sections and bullet points with confirmed player names, retain verified shot markers and passing connections with more than three completed passes, and save complete team statistics and play-by-play. Verify fixture sides, score, athlete mappings and timing; show one complete preview; then atomically persist and read back the approved data. Completeness and preservation checks prevent silent omissions, and actual fixture-page checks verify supported report and replay displays. Original AI wording and unresolved jerseys remain auditable. The fixture Match Video link opens the verified raw Veo MP4 recording; the original report URL is preserved separately.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [

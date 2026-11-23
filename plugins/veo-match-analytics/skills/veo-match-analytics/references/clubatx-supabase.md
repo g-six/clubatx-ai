@@ -8,7 +8,7 @@ Use this reference only after Veo extraction is complete and persistence is requ
 - The match ID supplied by the user is `public.fixtures.id` and is stored as `public.fixture_match_stats.fixture_id`.
 - `public.fixtures.home_score` and `public.fixtures.away_score` are the official result fields used by the ClubATX fixture page. A complete confirmed import updates these two columns together with the analytics payload.
 - `public.fixtures.half_duration_minutes` stores the nominal half duration. For a Veo import, trusted Veo period timing is authoritative. Compare the saved value with the verified Veo duration and include any required correction in the same preview and transaction.
-- `public.fixtures.video_url` stores the full user-supplied Veo match URL after replacing the first `#/analysis/` route prefix with `#/`. Preserve every other character. If that route prefix is absent, store the supplied URL unchanged.
+- `public.fixtures.video_url` stores the verified raw HTTPS MP4 recording URL for Match Video, without an event timestamp fragment. Preserve the complete observed path, case, and query string. Save the exact user-supplied Veo report/recording URL separately in `payload.source.report_url`; follow [match-video-link.md](match-video-link.md).
 - ClubATX uses `fixtures.finalized_at` as the Final signal and the live-clock fields for Full time. A completed Veo report import must set both states atomically; non-null scores alone are insufficient. Preserve an existing finalization timestamp. A recorded zero score remains valid.
 - `public.fixture_match_stats` is one row per fixture. Saving the same fixture again intentionally replaces its complete payload.
 - `public.fixture_player_analytics` is the only player-performance destination. It stores source identity, optional confirmed lineup/athlete links, exact playing seconds, and per-player metrics in one row per fixture side/source/jersey. Do not use the retired `fixture_player_match_stats` or `fixture_player_playing_time` tables.
@@ -67,9 +67,9 @@ After the home and away mappings are confirmed, show the current database `home_
 - Do not infer a final result from a playback-position scoreboard, title order, raw event count, or analytics still marked as processing.
 - Event-only and athlete-attribution corrections preserve the current official score unless the user separately confirms a score change.
 
-## Normalize the fixture video URL
+## Resolve the fixture MP4 video URL
 
-Use the original validated `https://app.veo.co` URL supplied by the user, not a browser redirect or a reconstructed URL. Replace the first exact `#/analysis/` substring with `#/` and leave all remaining characters unchanged. For example, `https://app.veo.co/matches/example/#/analysis/abc?foo=1` becomes `https://app.veo.co/matches/example/#/abc?foo=1`. If `#/analysis/` is absent, the normalized value is the original URL. Show the current and proposed `fixtures.video_url` values in the final preview and include the proposed value in the same write confirmation as the analytics and official score.
+Follow [match-video-link.md](match-video-link.md). Observe the exact match's standard video source through the supported browser media/DOM/network surface; verify the same match identity and recording, then save that HTTPS `.mp4` URL to `fixtures.video_url` without its fragment. Preserve the query string exactly, including signed parameters when present. Do not convert an `app.veo.co` URL by rewriting `#/analysis/`: a page URL is source provenance, not the Match Video target. Keep the original supplied URL unchanged in `payload.source.report_url`, alongside `source.provider`, `source.match_id`, and `source.raw_video_url`. Show current/proposed fixture video URLs and the separate source report URL in the complete write preview.
 
 ## Resolve athletes for jersey-bearing analytics
 
@@ -256,7 +256,7 @@ select public.save_fixture_performance(
   $veo_players$<complete_compact_player_array>$veo_players$::jsonb,
   <confirmed_home_score>::smallint,
   <confirmed_away_score>::smallint,
-  $veo_url$<derived_full_veo_url>$veo_url$::text
+  $veo_url$<verified_raw_mp4_url_without_fragment>$veo_url$::text
 );
 
 update public.fixtures
@@ -330,6 +330,6 @@ After the call completes, run filtered read-only queries for the same fixture:
 7. Require the saved event count and grouped side/type counts to match, every event URL to use the verified raw `.mp4#t=<max(exact source seconds - confirmed pre-roll, 0)>` form, and zero event URLs to use `app.veo.co`.
 8. Require the saved half duration to equal Veo's verified nominal duration and every normalized and projected period-two minute to be cumulative rather than reset.
 
-For a complete finished report, also require finalized_at to be non-null, live_clock_status to equal Full time, live_clock_running to be false, live_clock_started_at to be null, and live_clock_seconds to meet the verified elapsed full-time value. A standard two-period full-time value is `2 * verified_half_duration_minutes * 60`; add extra periods only when verified, preserve a greater saved clock, and never use video duration. Both official scores must be non-null and exactly match the confirmed canonical home/away result; zero is valid. The video URL must exactly equal the derived value when it was part of the write. Database numerics may serialize as strings, so compare exact numeric values without rounding beyond source precision.
+For a complete finished report, also require finalized_at to be non-null, live_clock_status to equal Full time, live_clock_running to be false, live_clock_started_at to be null, and live_clock_seconds to meet the verified elapsed full-time value. A standard two-period full-time value is `2 * verified_half_duration_minutes * 60`; add extra periods only when verified, preserve a greater saved clock, and never use video duration. Both official scores must be non-null and exactly match the confirmed canonical home/away result; zero is valid. The fixture video URL must exactly equal the verified raw MP4 without a timestamp fragment when it was part of the write; verify the source report URL separately. Database numerics may serialize as strings, so compare exact numeric values without rounding beyond source precision.
 
 If any comparison fails, or analytics exist while either official score is null, report the import as incomplete and do not claim success or finalization. After a successful replacement, state how many prior fixture rows were removed and that recovery requires a database backup. Never log, print, or request Supabase secrets.
