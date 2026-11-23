@@ -1,15 +1,15 @@
 {
   "name": "veo-match-analytics",
-  "version": "0.1.2",
-  "description": "Extract and verify Veo match analytics, resolve player links from fixture lineups with default rosters as backup, and save graph-ready team metrics plus confirmed player and event data to Supabase.",
+  "version": "0.1.8",
+  "description": "Capture complete Veo statistics, AI reports, shot maps, passing networks, player data, and timed events; resolve confirmed player names and verify atomic ClubATX imports.",
   "author": {
     "name": "Local developer"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Veo Match Analytics",
-    "shortDescription": "Save Veo analytics and raw-video event links",
-    "longDescription": "Open a Veo match analysis URL in the browser or validate an intermediate JSON export from that exact page, pause for sign-in when required, inspect observed analytics, event, and media data, confirm the ClubATX fixture, corrected side mapping, official score, Veo-authoritative half duration, athlete links, event-link pre-roll, and destructive event replacement, then atomically persist and verify graph-ready team metrics, cumulative event minutes, consolidated player statistics, exact playing-time seconds, and supported player events linked to the raw MP4 recording with a 3-second playback pre-roll by default. Use fixture lineups first and default team rosters only as backup; unlinked jerseys are expected and should be reported neutrally.",
+    "shortDescription": "Save verified Veo analytics",
+    "longDescription": "Capture every available match-report module and all individual attributes, preserve all five Veo AI sections and bullet points with confirmed player names, retain verified shot markers and passing connections with more than three completed passes, and save complete team statistics and play-by-play. Verify fixture sides, score, athlete mappings and timing; show one complete preview; then atomically persist and read back the approved data. Completeness and preservation checks prevent silent omissions, and actual fixture-page checks verify supported report and replay displays. Original AI wording and unresolved jerseys remain auditable.",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [

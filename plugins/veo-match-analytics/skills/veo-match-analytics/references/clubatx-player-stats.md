@@ -60,6 +60,15 @@ Copy values only from a verified per-player source, except for the explicit `dri
 | dribbles | `dribbles` | Use the complete, uniquely attributable `fixture_events` dribble projection as described below; otherwise preserve a verified player-source value or null. |
 | interceptions | `interceptions` | Copy only from a verified player source; otherwise null. |
 | saves | `saves` | Copy only from a verified player source; otherwise null. |
+| matches | `matches` | Copy the displayed manual metric; do not infer from participation. |
+| starts | `starts` | Copy the displayed manual metric. |
+| captaincies | `captaincies` | Copy the displayed manual metric. |
+| player of the match | `player_of_the_match` | Copy the displayed manual metric. |
+| unsuccessful passes | `unsuccessful_passes` | Copy the displayed count; do not subtract successful passes from total passes. |
+| duels | `duels` | Copy the displayed player count, not team-neutral event totals. |
+| loose-ball recoveries | `loose_ball_recoveries` | Copy the displayed player count. |
+
+Inspect live columns and the shared save function for every discovered attribute. The seven additional fields above require a separately authorized capability upgrade if absent; do not claim complete persistence while values exist only in an export. Do not alter schema as part of an import transaction.
 
 Missing nullable source fields remain null. Never use zero as a missing-value placeholder. If a field required by the verified rendered player table is missing or non-numeric for only some rows, disclose the limitation and stop that player-data import rather than creating inconsistent rows.
 
@@ -76,11 +85,7 @@ If the projection is incomplete or any player-attributed dribble cannot be assig
 
 ## Resolve the athlete link
 
-1. Determine the confirmed canonical fixture side that owns each source row.
-2. Query `public.fixture_lineups` using the confirmed `fixture_id`, that side's `division_team_id`, and `jersey_number`. Select `id`, `athlete_slug`, `player_name`, and `jersey_number`.
-3. Zero matches, duplicate matches, or a null athlete slug means unresolved. A unique linked row is only a candidate until the user confirms using the current fixture lineup.
-4. For a confirmed candidate, copy the lineup `id` and its exact `athlete_slug`. Do not search another fixture side or use a similarly named athlete as a substitute.
-5. If the user changes a lineup or jersey assignment, discard cached results, query the lineup again, rebuild every affected row, and obtain a fresh write confirmation.
+Use the precedence and batch confirmation in [Resolve athletes for jersey-bearing analytics](clubatx-supabase.md#resolve-athletes-for-jersey-bearing-analytics). A default roster jersey identifies an athlete candidate; use that athlete slug to find the exact lineup row on the same fixture side, even when the lineup jersey is blank or different. Persist the observed Veo jersey number and the confirmed lineup ID and athlete slug pair. If the candidate lacks a unique lineup row on that side, leave both link fields null. A default roster entry alone cannot satisfy the analytics foreign key.
 
 ## Consolidate and validate
 

@@ -104,6 +104,7 @@ Keep the complete normalized feed in `fixture_match_stats.payload.key_events`. B
 | `yellow_card` | `yellow` |
 | `red_card` | `red` |
 | `duel` with no side attribution or involving both teams | `duel` |
+| `shot`, `foul`, `corner`, `free_kick`, `goal_kick`, `throw_in`, `loose_ball_recovery`, `kickoff`, `save`, `offside` | Same normalized label, only when allowed by live constraints and verified against the rendered source |
 
 Exclude events marked deleted, overturned, or invalid. For ordinary player events, require an exact non-null `video_time_seconds`. A confirmed athlete uses the canonical name and slug. When a jersey is present but unresolved, use `Jersey #<jersey_number>` with `athlete_slug = null`; when jersey/player attribution is absent, empty, or null, use `Unknown player` for the relational recipient with both athlete-link fields null. Do not infer a recipient from team, position, neighboring events, or the same jersey on the opposing side. A team-neutral duel is the exception: preserve it with `team = null`, `source_team = null`, `jersey_number = null`, `player_name = null`, and `athlete_slug = null` when Veo does not identify one side or participant; its event type represents both sides.
 

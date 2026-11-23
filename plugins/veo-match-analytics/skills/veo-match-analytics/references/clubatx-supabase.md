@@ -9,11 +9,11 @@ Use this reference only after Veo extraction is complete and persistence is requ
 - `public.fixtures.home_score` and `public.fixtures.away_score` are the official result fields used by the ClubATX fixture page. A complete confirmed import updates these two columns together with the analytics payload.
 - `public.fixtures.half_duration_minutes` stores the nominal half duration. For a Veo import, trusted Veo period timing is authoritative. Compare the saved value with the verified Veo duration and include any required correction in the same preview and transaction.
 - `public.fixtures.video_url` stores the full user-supplied Veo match URL after replacing the first `#/analysis/` route prefix with `#/`. Preserve every other character. If that route prefix is absent, store the supplied URL unchanged.
-- ClubATX has no independent fixture-status column in this workflow. Downstream consumers treat both official score columns being non-null as the completion signal. A 0 is a recorded score; `null` means the fixture is still unfinalized.
+- ClubATX uses `fixtures.finalized_at` as the Final signal and the live-clock fields for Full time. A completed Veo report import must set both states atomically; non-null scores alone are insufficient. Preserve an existing finalization timestamp. A recorded zero score remains valid.
 - `public.fixture_match_stats` is one row per fixture. Saving the same fixture again intentionally replaces its complete payload.
 - `public.fixture_player_analytics` is the only player-performance destination. It stores source identity, optional confirmed lineup/athlete links, exact playing seconds, and per-player metrics in one row per fixture side/source/jersey. Do not use the retired `fixture_player_match_stats` or `fixture_player_playing_time` tables.
 - Keep every normalized Veo feed record in `fixture_match_stats.payload.key_events`, including the exact unshifted `video_time_seconds`. Also replace `public.fixture_events` with the confirmed projection of player-attributed event types supported by its current constraint. Each projected row stores the verified raw recording URL with a `#t=` media fragment set to `max(video_time_seconds - confirmed_pre_roll_seconds, 0)`; the default pre-roll is 3 seconds.
-- Confirmed writes call `public.save_fixture_performance(bigint,jsonb,text,jsonb,smallint,smallint,text)` once for the function-owned destinations, update only the verified `fixtures.half_duration_minutes` value directly when needed, and replace `fixture_events` in the same explicit SQL transaction. Do not write any other `fixtures` field, `fixture_match_stats`, or `fixture_player_analytics` directly.
+- Confirmed writes call `public.save_fixture_performance(bigint,jsonb,text,jsonb,smallint,smallint,text)` once for the function-owned destinations, update the verified `fixtures.half_duration_minutes` value when needed, replace `fixture_events`, and finalize a complete finished report with `finalized_at`, `live_clock_status`, `live_clock_running`, `live_clock_started_at`, and `live_clock_seconds` in the same explicit SQL transaction. Do not write any other `fixtures` field, `fixture_match_stats`, or `fixture_player_analytics` directly.
 - If `fixture_match_stats`, `fixture_player_analytics`, `fixture_events`, or `save_fixture_performance` is absent, stop and report the missing database capability. Inspect `fixture_events` columns and check constraints before building its projection; do not create or alter schema during an import run.
 
 ## Resolve the fixture
@@ -29,6 +29,11 @@ select
   f.away_score,
   f.half_duration_minutes,
   f.video_url,
+  f.finalized_at,
+  f.live_clock_status,
+  f.live_clock_running,
+  f.live_clock_started_at,
+  f.live_clock_seconds,
   home_ts.team as home_team,
   away_ts.team as away_team
 from public.fixtures as f
@@ -71,14 +76,14 @@ Use the original validated `https://app.veo.co` URL supplied by the user, not a 
 Run this workflow after the user confirms the home/away mapping and before building the final payload.
 
 1. Collect the distinct `(canonical team, jersey_number)` pairs from `key_events`, the rendered player-statistics table, and verified exact playing-time rows where `jersey_number` is non-null. Keep identical jersey numbers on opposing teams separate.
-2. Query `public.fixture_lineups` for the confirmed fixture and corresponding division team to find current `id`, `player_name`, `athlete_slug`, and jersey matches. Present all unique linked matches and every missing, ambiguous, or unlinked jersey in one grouped preview. A unique lineup match is a candidate, not proof. The user may confirm using all shown current lineup links in one batch, correct individual mappings, or explicitly leave any or all jerseys unlinked.
+2. Load existing player analytics for the fixture and source, and current `public.fixture_lineups` for each confirmed division team. Preserve valid saved links unless the user requests a correction. For an unlinked jersey, look up `public.team_roster` by canonical team name and jersey number, joining `athlete` to `public.athletes` for the full name. Deduplicate repeated roster entries for the same athlete slug. A single athlete is a candidate; resolve the lineup ID by that slug on the same fixture and division team, even if the lineup jersey is blank or different. If the default roster has no assignment, use a unique athlete-linked fixture lineup row with that jersey. Multiple roster athletes for a number require a user decision. Flag any disagreement between the default roster and lineup, and leave links unresolved when there is no unique eligible lineup row. Present candidates together with their source, current and proposed links, and any unresolved jerseys for batch confirmation.
 3. If the user provides a name instead of accepting a current linked lineup row, search `public.athletes` using that user-confirmed name. Select only `slug`, `first_name`, `last_name`, and `date_of_birth`; do not fetch or display contact or address fields.
 4. When exactly one athlete matches, show the canonical full name and athlete slug and ask the user to confirm the link.
 5. When multiple athletes match, list every candidate with full name, date of birth (or `unknown` when null), and slug. Ask the user to select one exact candidate. Never choose based on result order, age, team, or similarity alone.
 6. When no athlete matches, ask the user to correct the name or explicitly leave that team/jersey unlinked. Do not create or edit an athlete record during this import.
 7. For a confirmed candidate, write the athlete's canonical database full name to `player_name` and its slug to `athlete_slug` on every event with that canonical team and jersey number. Use the same confirmed lineup identity in the consolidated player row. For an explicitly skipped mapping, retain a trustworthy source-provided event name when present and store event `athlete_slug` as `null`; otherwise keep both event fields `null`. Persist the player row with both `fixture_lineup_id` and `athlete_slug` set to `null`; unresolved attribution must not erase otherwise valid source analytics.
 
-Every retry starts from fresh database state. If the user says fixture jersey numbers or athlete links were added, changed, or should be tried again, re-query both fixture sides and rebuild the complete mapping preview. Do not merge stale candidate rows into the refreshed result. Any revised mapping invalidates an earlier write confirmation.
+Every retry starts from fresh database state. If the user says fixture jersey numbers or athlete links were added, changed, or should be tried again, re-query both fixture sides and their default rosters, then rebuild the complete mapping preview. Do not merge stale candidate rows into the refreshed result. Any revised mapping invalidates an earlier write confirmation.
 
 Normalize whitespace and compare names case-insensitively, but escape user-provided text safely before using it in SQL. Prefer an exact normalized full-name match first. If broader partial matching is needed, show the resulting candidates and require an explicit selection.
 
@@ -106,7 +111,7 @@ Validate the intended projection before preview:
 
 ## Canonical payload
 
-The payload contains exactly `match`, `teams`, and `key_events` at the top level. Read [veo-network-events.md](veo-network-events.md) for extraction and normalization rules.
+The canonical core contains `match`, `teams`, and `key_events`. This is a minimum import contract, not permission to discard validated application extensions. Follow [spatial-and-complete-data.md](spatial-and-complete-data.md); inspect the actual save/read consumers before adding or retaining extensions, and preserve verified existing optional fields in a narrow correction. Read [veo-network-events.md](veo-network-events.md) for extraction and normalization rules.
 
 ```json
 {
@@ -239,7 +244,7 @@ Leave unavailable nullable values null; never manufacture zero. The top-level `p
 
 ## Save and verify
 
-After the user confirms the final preview, use one Supabase SQL request containing one explicit transaction. Call the shared function exactly once, replace `fixture_events`, run pre-commit assertions, and commit only if all statements succeed:
+For a complete confirmed report of a finished match, use the following full-import transaction. The finalization block is mandatory for this completed-report workflow. Read-only extraction and narrow player/event/link/minute corrections preserve the existing finalization and clock state and omit that block. After the user confirms the final preview, use one Supabase SQL request containing one explicit transaction. Call the shared function exactly once, replace `fixture_events`, run pre-commit assertions, and commit only if all statements succeed:
 
 ```sql
 begin;
@@ -283,13 +288,25 @@ from jsonb_to_recordset(
   video_url text
 );
 
--- Add count, side, and raw-URL assertions that raise on mismatch.
+-- Required for a complete report of a finished match, in this same transaction.
+-- Derive verified_full_time_elapsed_seconds from verified periods, never video length.
+update public.fixtures
+set finalized_at = coalesce(finalized_at, now()),
+    live_clock_status = 'Full time',
+    live_clock_running = false,
+    live_clock_started_at = null,
+    live_clock_seconds = greatest(coalesce(live_clock_seconds, 0), <verified_full_time_elapsed_seconds>)
+where id = <validated_match_id>;
+
+-- Add count, side, raw-URL and Final/Full-time assertions that raise on mismatch.
+-- Require finalized_at not null, Full time, running false, started_at null,
+-- and clock seconds at least verified_full_time_elapsed_seconds.
 commit;
 ```
 
-Before executing, confirm that each dollar-quote delimiter does not occur in its enclosed value. Keep all seven helper argument casts explicit, even when PostgreSQL could infer some types. If function resolution fails because an argument is still untyped, treat the error as pre-mutation, re-audit the fixture and existing row counts, add the missing cast, and retry the same confirmed payload. The transaction atomically:
+Before executing, confirm that each dollar-quote delimiter does not occur in its enclosed value. Keep all seven helper argument casts explicit. If function resolution fails, re-audit the fixture and existing row counts, correct the missing cast, and retry only the same confirmed payload. The transaction atomically:
 
-- updates only `fixtures.home_score`, `fixtures.away_score`, `fixtures.video_url`, and the verified Veo `fixtures.half_duration_minutes` value;
+- updates `fixtures.home_score`, `fixtures.away_score`, `fixtures.video_url`, and the verified Veo `fixtures.half_duration_minutes` value; for a complete finished report also sets the five final/full-time fields above, preserving existing finalization timestamps and greater clock values;
 - upserts the complete `fixture_match_stats.payload`;
 - deletes and replaces `fixture_player_analytics` rows for the confirmed fixture and source when `p_players` is non-null; and
 - deletes and replaces the confirmed fixture's complete `fixture_events` projection.
@@ -304,7 +321,7 @@ Do not call `save_fixture_scoresheet`, substitute multiple REST calls, or write 
 
 After the call completes, run filtered read-only queries for the same fixture:
 
-1. Read `fixtures.home_score`, `fixtures.away_score`, `fixtures.half_duration_minutes`, and `fixtures.video_url`.
+1. Read `fixtures.home_score`, `fixtures.away_score`, `fixtures.half_duration_minutes`, `fixtures.video_url`, `fixtures.finalized_at`, `fixtures.live_clock_status`, `fixtures.live_clock_running`, `fixtures.live_clock_started_at`, and `fixtures.live_clock_seconds`.
 2. Read the single `fixture_match_stats.payload` and compare it as JSONB with the intended complete payload.
 3. Read `fixture_player_analytics` filtered by both fixture ID and source, ordered by `division_team_id, jersey_number`.
 4. Require the stored player-row count to equal the complete intended replacement count. Compare every intended field, including nulls, every exact `played_seconds`, and every link pair. Also require no extra row for that fixture/source.
@@ -313,6 +330,6 @@ After the call completes, run filtered read-only queries for the same fixture:
 7. Require the saved event count and grouped side/type counts to match, every event URL to use the verified raw `.mp4#t=<max(exact source seconds - confirmed pre-roll, 0)>` form, and zero event URLs to use `app.veo.co`.
 8. Require the saved half duration to equal Veo's verified nominal duration and every normalized and projected period-two minute to be cumulative rather than reset.
 
-Both official scores must be non-null and exactly match the confirmed canonical home/away result; zero is valid. The video URL must exactly equal the derived value when it was part of the write. Database numerics may serialize as strings, so compare exact numeric values without rounding beyond source precision.
+For a complete finished report, also require finalized_at to be non-null, live_clock_status to equal Full time, live_clock_running to be false, live_clock_started_at to be null, and live_clock_seconds to meet the verified elapsed full-time value. A standard two-period full-time value is `2 * verified_half_duration_minutes * 60`; add extra periods only when verified, preserve a greater saved clock, and never use video duration. Both official scores must be non-null and exactly match the confirmed canonical home/away result; zero is valid. The video URL must exactly equal the derived value when it was part of the write. Database numerics may serialize as strings, so compare exact numeric values without rounding beyond source precision.
 
 If any comparison fails, or analytics exist while either official score is null, report the import as incomplete and do not claim success or finalization. After a successful replacement, state how many prior fixture rows were removed and that recovery requires a database backup. Never log, print, or request Supabase secrets.
