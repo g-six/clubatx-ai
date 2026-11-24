@@ -28,7 +28,8 @@ Call `inspect_recording(path)`. Keep its `recording_id`. Confirm the duration,
 framing, court visibility and timestamp basis from metadata and initial images.
 If tools are absent, do not pretend the plugin is connected: use the README's
 installation instructions or report the connection requirement. Python 3.9+,
-FFmpeg and ffprobe must be on the local process PATH. `server/server.py --check`
+FFmpeg and ffprobe must be installed. The server checks the local process PATH
+first, then standard system/Homebrew executable locations. `server/server.py --check`
 checks executables. Server state and recording IDs last only for that process.
 
 ## Review workflow
@@ -154,6 +155,9 @@ source MP4 for Match video, and 2.2 seconds of pre-roll for each event Play link
 Match shots/goals to verified team jerseys and uniquely linked players; check
 that official goals and cards remain visible in Key events. The reference also
 records the requested modal player and supported mobile landscape behavior.
+On a re-import, reconcile saved reviewed evidence and immutable timestamps with
+existing rows; do not duplicate clips or discard admin links. Record verified
+jersey numbers, uniquely resolved players and unresolved attribution separately.
 When an admin links an attempt to an existing goal in Key events, copy the
 goal's match minute to the attempt and preserve its original video anchor.
 Local analysis alone does not authorize a fixture write. The local MCP server

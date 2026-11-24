@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 SERVER = Path(__file__).resolve().parents[1] / "server/server.py"
 spec = importlib.util.spec_from_file_location("futsal_server", SERVER)
@@ -15,6 +16,24 @@ spec.loader.exec_module(module)
 
 def data(result):
     return json.loads(result["content"][0]["text"])
+
+
+class ExecutableResolutionTests(unittest.TestCase):
+    def test_path_installation_has_priority(self):
+        with mock.patch.object(module.shutil, 'which', return_value='/chosen/bin/ffprobe'):
+            self.assertEqual(module.media_executable('ffprobe'), '/chosen/bin/ffprobe')
+
+    def test_restricted_host_path_uses_executable_in_standard_directory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            executable = Path(folder) / 'ffprobe'
+            executable.write_text('#!/bin/sh\nprintf fallback-ok')
+            executable.chmod(0o700)
+            with mock.patch.object(module.shutil, 'which', return_value=None), mock.patch.object(module, 'MEDIA_BIN_DIRS', (Path(folder),)):
+                self.assertEqual(module.run(['ffprobe']), b'fallback-ok')
+                executable.chmod(0o600)
+                self.assertIsNone(module.media_executable('ffprobe'))
+                with self.assertRaisesRegex(ValueError, 'Missing executable ffprobe'):
+                    module.run(['ffprobe'])
 
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")

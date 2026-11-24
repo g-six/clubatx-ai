@@ -19,6 +19,11 @@ throughout review and publishing without requesting them again.
   shooter to an available lineup player. Report any shots that still lack a
   verified jersey or player rather than presenting team-only attribution as a
   completed player match.
+- On a requested re-import, reuse saved visual evidence when it belongs to the
+  unchanged recording; revisit shooter numbers and unresolved links under the
+  updated workflow. Extraction alone is not a new review. Read back current
+  events and admin links before deriving the patch. Keep existing event IDs,
+  source identities, video anchors and user corrections.
 - Read existing events, fixture video, finalization/clock state, lineups and
   relevant analytics before writing. Save a before-state and proposed changes.
 - Preserve the official result and existing goal/card/assist records. A partial
@@ -32,6 +37,13 @@ throughout review and publishing without requesting them again.
   described as a sequence unless separate attempts have verified timestamps.
 - Reconcile located goals with existing records only when the identity is
   supported. Do not arbitrarily attach a finish to one of several untimed goals.
+  A complete group of verified clips may match a complete group of otherwise
+  indistinguishable untimed goals for the same team and scorer/jersey when the
+  counts agree. Pair deterministically and record that basis; every time comes
+  from its clip, and ID order is not evidence of official scoring chronology.
+  If a scorer group's counts disagree or identities conflict, leave the match
+  unresolved. Different players sharing a roster number remain ambiguous even
+  when their jersey is readable.
   When publishing shot clips while official goals already exist, a scoring
   attempt may be a `shot` with a scoring-outcome note; do not insert another
   `goal` or increment the score. Explain that these categories overlap.
@@ -170,10 +182,18 @@ Use the server-verified admin controls when available; platform admins can
 manage fixture teams, while organization admins are restricted to their own
 organization's team. A client-visible admin flag alone is not authorization.
 
+Place the admin shot-to-goal selector and **Mark key event** action inside the
+clip modal so attribution can be set while watching. Keep these controls within
+the fullscreen panel and accessible by scrolling on small screens. Reuse server
+permission checks; changing an import cannot enable admin controls by itself.
+
 The preferred fixture experience opens both Match video and each event Play
 action in a video modal on the current page, preserving the supplied MP4 URL
 and event pre-roll. Reuse the existing authorized viewer flow; a modal does
-not grant access to a signed-out viewer. Closing pauses/unmounts playback and
+not grant access to a signed-out viewer. Apply the supplied fragment time to the
+media currentTime after metadata loads; do not rely solely on #t support, since
+mobile Safari may begin at 0:00. Verify the resulting seek without changing the
+original event timestamp or subtracting pre-roll a second time. Closing pauses/unmounts playback and
 restores focus to the triggering action.
 
 On mobile devices, request fullscreen landscape from the opening user gesture

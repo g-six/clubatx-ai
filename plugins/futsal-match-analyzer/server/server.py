@@ -8,6 +8,7 @@ import csv
 import io
 import json
 import math
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -15,7 +16,7 @@ import sys
 import tempfile
 import uuid
 
-VERSION = "0.1.0"
+VERSION = "0.1.5"
 EVENT_TYPES = ["goal", "shot", "save", "block", "turnover", "counterattack",
                "kick_in", "corner", "goal_clearance", "free_kick", "penalty",
                "foul", "yellow_card", "red_card", "substitution", "timeout",
@@ -40,7 +41,28 @@ def nonblank(value, name):
     return value.strip()
 
 
+MEDIA_BIN_DIRS = (Path('/opt/homebrew/bin'), Path('/usr/local/bin'), Path('/usr/bin'), Path('/bin'))
+
+
+def media_executable(name):
+    """Desktop hosts can have a narrower PATH than the user's login shell."""
+    found = shutil.which(name)
+    if found:
+        return found
+    for directory in MEDIA_BIN_DIRS:
+        candidate = directory / name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
 def run(command, timeout=45):
+    command = list(command)
+    if command[0] in ('ffmpeg', 'ffprobe'):
+        resolved = media_executable(command[0])
+        if resolved is None:
+            raise ValueError(f"Missing executable {command[0]}; install FFmpeg and ensure it is on PATH")
+        command[0] = resolved
     try:
         return subprocess.run(command, check=True, capture_output=True, timeout=timeout).stdout
     except FileNotFoundError as exc:
@@ -337,7 +359,7 @@ def serve():
 
 if __name__ == "__main__":
     if "--check" in sys.argv:
-        missing = [name for name in ["ffmpeg", "ffprobe"] if shutil.which(name) is None]
+        missing = [name for name in ["ffmpeg", "ffprobe"] if media_executable(name) is None]
         print(json.dumps({"python": sys.version.split()[0], "missing_executables": missing}))
         sys.exit(bool(missing))
     serve()

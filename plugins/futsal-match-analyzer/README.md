@@ -11,7 +11,8 @@ a standalone automatic event detector or a guarantee of every event in a match.
 ## Requirements
 
 - Codex or another plugin host supporting local stdio MCP servers and image tools.
-- Python 3.9 or newer, plus `ffmpeg` and `ffprobe` on PATH.
+- Python 3.9 or newer, plus installed `ffmpeg` and `ffprobe`. The server uses PATH first and
+  falls back to standard system/Homebrew executable locations for desktop hosts.
 - A readable absolute local `.mp4` path.
 
 No Python packages, API key, ClubAtx login or hosted backend are required. The
@@ -69,6 +70,11 @@ verify the first kickoff as timeline 0:00, preserve exact video timestamps,
 attach the source Veo MP4 to Match video, and start event Play links 2.2 seconds
 before each event. It preserves the official score, records confirmed offensive
 fouls/disallowed finishes, and leaves unmatched original events untimed.
+Re-imports preserve existing IDs/admin links, revisit shooter jerseys, link only
+uniquely supported players, and attach verified clips to existing scoresheet
+goals without adding goals. Ambiguous identities remain explicitly unresolved.
+The fixture experience includes admin attribution inside the video modal and
+explicit event seeking; those require website support, not only this plugin.
 An authorized service connection is needed for publishing, not local analysis.
 
 ## Analysis limits
