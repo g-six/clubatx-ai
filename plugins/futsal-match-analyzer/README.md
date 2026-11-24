@@ -66,7 +66,7 @@ temporary files. Restarting requires inspecting and reviewing again.
 When asked to save reviewed events, the skill follows the [fixture publishing
 workflow](skills/analyze-futsal-recording/references/clubatx-fixture-publishing.md):
 verify the first kickoff as timeline 0:00, preserve exact video timestamps,
-attach the source Veo MP4 to Match video, and start event Play links 1.5 seconds
+attach the source Veo MP4 to Match video, and start event Play links 2.2 seconds
 before each event. It preserves the official score, records confirmed offensive
 fouls/disallowed finishes, and leaves unmatched original events untimed.
 An authorized service connection is needed for publishing, not local analysis.

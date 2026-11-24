@@ -150,7 +150,7 @@ durable directory if requested. Do not delete the source or unrelated files.
 Follow [ClubAtx fixture publishing](references/clubatx-fixture-publishing.md)
 when the user asks to save reviewed events to a fixture. Its defaults are
 kickoff-relative display times for all timestamped event types, the verified
-source MP4 for Match video, and 1.5 seconds of pre-roll for each event Play link.
+source MP4 for Match video, and 2.2 seconds of pre-roll for each event Play link.
 Match shots/goals to verified team jerseys and uniquely linked players; check
 that official goals and cards remain visible in Key events. The reference also
 records the requested modal player and supported mobile landscape behavior.

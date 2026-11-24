@@ -48,7 +48,7 @@ Let `K` be the first-kickoff video seconds and `V` the immutable event video sec
 display_elapsed_seconds = max(V - K, 0)
 display_whole_seconds   = floor(display_elapsed_seconds)
 display_minute         = floor(display_whole_seconds / 60)
-event_play_start       = max(V - 1.5, 0)
+event_play_start       = max(V - 2.2, 0)
 ```
 
 - Kickoff is 0:00. By default this is running elapsed time, including stoppages
@@ -70,14 +70,14 @@ event_play_start       = max(V - 1.5, 0)
   and the elapsed-time basis. Respect field lengths and do not discard evidence
   descriptions just to repeat metadata.
 - Each event Play URL uses the exact verified raw MP4 plus `#t=event_play_start`.
-  Use **1.5 seconds of pre-roll** unless the user requests a different allowance.
+  Use **2.2 seconds of pre-roll** unless the user requests a different allowance.
   Pre-roll changes playback only: preserve `V`, display times and kickoff.
 - Recalculate links from immutable `V` on reruns. Never subtract the allowance
   again from an already adjusted URL, derive `V` from a rounded minute, or use
   a pre-rolled URL as an exact event timestamp.
 
 Example: with kickoff `K = 90` and event `V = 150.25`, display elapsed is 1:00.25
-(minute 1; whole seconds 60), and Play starts at raw video `#t=148.75`. Repeating
+(minute 1; whole seconds 60), and Play starts at raw video `#t=148.05`. Repeating
 the update must produce that same link, not a second subtraction.
 
 ## Attach the correct Veo source
@@ -130,7 +130,7 @@ Retain before/after audit artifacts and compare the intended rows after saving.
 ## Verify completion
 
 - Read back every affected event. Compare team, type, status/provenance,
-  kickoff-relative time and exact `V - 1.5` URL; confirm no duplicate goal rows.
+  kickoff-relative time and exact `V - 2.2` URL; confirm no duplicate goal rows.
 - Confirm shots and goals group under their verified team/jersey, with the
   linked player when uniquely supported. Unknown-player events must still
   display the verified jersey number. Preserve existing named scorers and
