@@ -75,6 +75,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity"
+    },
+    {
+      "name": "futsal-match-analyzer",
+      "source": {
+        "source": "local",
+        "path": "./plugins/futsal-match-analyzer"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Data & Analytics"
     }
   ]
 }

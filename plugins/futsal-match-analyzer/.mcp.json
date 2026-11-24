@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "futsal-match-analyzer": {
+      "command": "python3",
+      "args": [
+        "${PLUGIN_ROOT}/server/server.py"
+      ],
+      "cwd": "${PLUGIN_ROOT}",
+      "env_vars": [
+        "PATH"
+      ],
+      "tool_timeout_sec": 240
+    }
+  }
+}

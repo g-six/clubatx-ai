@@ -1,0 +1,26 @@
+{
+  "name": "futsal-match-analyzer",
+  "version": "0.1.2",
+  "description": "Evidence-based visual review of futsal events from local MP4 recordings.",
+  "author": {
+    "name": "ClubAtx"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "ClubAtx Futsal Match Recording Analysis",
+    "shortDescription": "Review futsal match events",
+    "longDescription": "Analyze a local MP4 futsal recording with agent-assisted visual review. Inspect timestamped frame grids, verify candidate events, export evidence clips, and save JSON, CSV and Markdown reports with explicit sampled-review coverage. Runs locally using Python and FFmpeg; no model API key is required. The host assistant interprets the images; this is not a standalone automatic event detector.",
+    "developerName": "ClubAtx",
+    "category": "Data & Analytics",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Analyze the futsal match recording at this local MP4 path and produce a timestamped event report."
+    ],
+    "brandColor": "#176B46"
+  },
+  "requires_local_executor": true
+}
