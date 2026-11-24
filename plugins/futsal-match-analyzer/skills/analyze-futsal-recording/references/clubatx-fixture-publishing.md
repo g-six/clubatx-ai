@@ -65,6 +65,13 @@ event_play_start       = max(V - 2.2, 0)
   official clock is actually known; retain running display time separately.
 - Original scoresheet events without a verified video moment remain untimed.
   Do not borrow a neighboring event's time or infer timing from goal order.
+- When an admin links a reviewed attempt to an existing goal, the goal's
+  recorded minute and added time take precedence for that linked attempt.
+  Copy that match time without changing the original video timestamp or
+  subtracting pre-roll from the displayed minute. An untimed goal can receive
+  the reviewed attempt's time as part of the explicit link; keep this source
+  distinction in the audit. Later goal-minute corrections should also be
+  reflected in the linked attempt's display.
 - Preserve `V` with subsecond precision in durable source metadata, the exported
   review/import manifest, or event commentary. Also retain `K`, source identity
   and the elapsed-time basis. Respect field lengths and do not discard evidence
@@ -152,6 +159,16 @@ Retain before/after audit artifacts and compare the intended rows after saving.
   any untimed original events or unresolved scoring gaps concisely.
 
 ## Fixture player experience
+
+An authenticated admin can use **Mark key event** on the fixture page to match
+a marked shot/scoring finish to an existing same-team goal. Existing goals offer
+**View key event** instead of creating another goal. This attaches the original
+shot playback URL, applies the linked goal's authoritative minute and keeps the
+official result unchanged. Verify the saved pair and copied minute. Do not
+automatically convert all reviewed scoring finishes into additional goals.
+Use the server-verified admin controls when available; platform admins can
+manage fixture teams, while organization admins are restricted to their own
+organization's team. A client-visible admin flag alone is not authorization.
 
 The preferred fixture experience opens both Match video and each event Play
 action in a video modal on the current page, preserving the supplied MP4 URL

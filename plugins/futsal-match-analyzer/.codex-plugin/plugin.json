@@ -1,6 +1,6 @@
 {
   "name": "futsal-match-analyzer",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Evidence-based visual review of futsal events from local MP4 recordings.",
   "author": {
     "name": "ClubAtx"

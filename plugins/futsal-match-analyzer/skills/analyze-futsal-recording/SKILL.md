@@ -154,5 +154,7 @@ source MP4 for Match video, and 2.2 seconds of pre-roll for each event Play link
 Match shots/goals to verified team jerseys and uniquely linked players; check
 that official goals and cards remain visible in Key events. The reference also
 records the requested modal player and supported mobile landscape behavior.
+When an admin links an attempt to an existing goal in Key events, copy the
+goal's match minute to the attempt and preserve its original video anchor.
 Local analysis alone does not authorize a fixture write. The local MCP server
 does not perform ClubAtx imports; use the host's authorized service tools or API.
