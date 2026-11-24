@@ -71,6 +71,30 @@ explain that this implementation provides sampled visual review and cannot
 guarantee an exhaustive event log. Never claim all goals, fouls or touches were
 detected merely because sampled spans cover the full file. Report what was seen.
 
+## Center-spot restart cues
+
+During chronological screening, look for a player deliberately placing a
+stationary ball at the center spot: the center of the circle on the halfway
+line. Identify the markings relative to the court: the halfway line may look
+horizontal, vertical or diagonal in the camera view. Track the setup through
+actual ball contact and the restart, rather than treating placement as kickoff.
+
+Classify each observed center restart as an opening kickoff, a later period
+start, a possible post-goal kickoff, or a retake when evidence permits. Repeated
+placement, practice, camera replays and retakes are not additional goals.
+For a possible post-goal kickoff, review backward to the preceding attacking
+sequence, then densely inspect its lead-up, shot and aftermath. Check the ball
+crossing the goal line, referee decisions, pre-shot whistles or offensive fouls,
+and the subsequent restart. Expand the search if the goal is separated from
+kickoff by a long stoppage. Preserve user-confirmed counted/disallowed decisions.
+
+Center placement is a search cue and a restart can corroborate other evidence;
+neither alone proves a counted goal, identifies the scorer, or establishes its
+timestamp. Do not infer a score from the number of center setups. Log unresolved
+candidates explicitly. When the first kickoff anchors the review timeline, use
+the first touch that starts play, not the earlier ball placement. Keep distinct
+video times for a goal and its subsequent kickoff.
+
 ## Event definitions and attribution
 
 Supported types: `goal`, `shot`, `save`, `block`, `turnover`, `counterattack`,

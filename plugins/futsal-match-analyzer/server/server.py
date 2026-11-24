@@ -16,7 +16,7 @@ import sys
 import tempfile
 import uuid
 
-VERSION = "0.1.5"
+VERSION = "0.1.6"
 EVENT_TYPES = ["goal", "shot", "save", "block", "turnover", "counterattack",
                "kick_in", "corner", "goal_clearance", "free_kick", "penalty",
                "foul", "yellow_card", "red_card", "substitution", "timeout",

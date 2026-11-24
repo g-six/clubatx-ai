@@ -77,6 +77,14 @@ The fixture experience includes admin attribution inside the video modal and
 explicit event seeking; those require website support, not only this plugin.
 An authorized service connection is needed for publishing, not local analysis.
 
+## Center-spot review cue
+
+The review workflow looks for ball placement at the center of the circle on the
+halfway line, then follows the restart. Possible post-goal kickoffs prompt a
+backward review of the preceding attack, including offensive fouls and pre-shot
+stoppages. Period starts and retakes are distinguished; center placement alone
+does not prove a goal. Kickoff timing uses the first touch that starts play.
+
 ## Analysis limits
 
 Video timestamps are elapsed recording time. The futsal game clock is recorded

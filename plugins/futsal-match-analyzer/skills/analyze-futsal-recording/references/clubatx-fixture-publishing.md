@@ -52,7 +52,10 @@ throughout review and publishing without requesting them again.
 
 Visually locate the first kickoff with dense frames, refining to about 0.1 seconds
 when needed. Record its exact video offset and evidence. Each new match needs its
-own offset; never reuse the previous match's kickoff.
+own offset; never reuse the previous match's kickoff. Look for ball placement at the
+center spot as a setup cue, but anchor `K` to the first touch that starts play,
+not placement. Classify later center restarts separately; a post-goal kickoff
+helps locate the preceding sequence but does not supply the goal timestamp.
 
 Let `K` be the first-kickoff video seconds and `V` the immutable event video seconds:
 
